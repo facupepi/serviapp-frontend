@@ -2,7 +2,17 @@
 
 Una plataforma completa que conecta clientes con proveedores de servicios profesionales, desarrollada con React, TypeScript y Tailwind CSS.
 
+🌐 **Aplicación en vivo:** https://serviapp-frontend.vercel.app/
+
 ![ServiApp Banner](https://via.placeholder.com/800x400/3B82F6/FFFFFF?text=ServiApp+-+Conectando+Profesionales)
+
+## 👥 Desarrollado por
+
+- **Facundo Pepino** - fpepino@facultad.sanfrancisco.utn.edu.ar
+- **Santiago Villaba**
+- **Mauricio Truchet**
+
+*Universidad Tecnológica Nacional - Facultad Regional San Francisco*
 
 ## 📋 Tabla de Contenidos
 
@@ -413,15 +423,19 @@ Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](L
 
 ## 📞 Contacto
 
-### **👨‍💻 Desarrollador**
-- **GitHub**: [@tu-usuario](https://github.com/tu-usuario)
-- **Email**: tu-email@ejemplo.com
-- **LinkedIn**: [Tu Perfil](https://linkedin.com/in/tu-perfil)
+### **👨‍💻 Desarrolladores**
+- **Facundo Pepino**
+  - **GitHub**: [@facupepi](https://github.com/facupepi)
+  - **Email**: fpepino@facultad.sanfrancisco.utn.edu.ar
+  - **LinkedIn**: [Facundo Pepino](https://www.linkedin.com/in/facundo-pepino/)
+- **Santiago Villaba**
+- **Mauricio Truchet**
 
-### **🔗 Enlaces Útiles**
-- **Demo en Vivo**: [https://serviapp-demo.vercel.app](https://serviapp-demo.vercel.app)
-- **Documentación**: [https://docs.serviapp.com](https://docs.serviapp.com)
-- **API Docs**: [https://api.serviapp.com/docs](https://api.serviapp.com/docs)
+*Universidad Tecnológica Nacional - Facultad Regional San Francisco*
+
+### **🔗 Enlaces del Proyecto**
+- **Frontend en Vivo**: [https://serviapp-frontend.vercel.app/](https://serviapp-frontend.vercel.app/)
+- **Repositorio GitHub**: [https://github.com/facupepi/serviapp-frontend](https://github.com/facupepi/serviapp-frontend)
 
 ---
 

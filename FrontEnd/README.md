@@ -2,6 +2,17 @@
 
 Frontend de la plataforma ServiApp desarrollado con React, TypeScript y Vite.
 
+🌐 **Aplicación en vivo:** https://serviapp-frontend.vercel.app/
+📦 **Repositorio:** https://github.com/facupepi/serviapp-frontend
+
+## 👥 Desarrollado por
+
+- **Facundo Pepino** - fpepino@facultad.sanfrancisco.utn.edu.ar
+- **Santiago Villaba**
+- **Mauricio Truchet**
+
+*Universidad Tecnológica Nacional - Facultad Regional San Francisco*
+
 ## 🛠️ Stack Tecnológico
 
 - **React 18.3.1** - Biblioteca de UI con hooks modernos

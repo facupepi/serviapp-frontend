@@ -1,8 +1,28 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "serviapp-frontend",
+  "description": "Frontend de la plataforma ServiApp - Conectando clientes con proveedores de servicios profesionales",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "homepage": "https://serviapp-frontend.vercel.app/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/facupepi/serviapp-frontend.git"
+  },
+  "authors": [
+    {
+      "name": "Facundo Pepino",
+      "email": "fpepino@facultad.sanfrancisco.utn.edu.ar",
+      "url": "https://www.linkedin.com/in/facundo-pepino/"
+    },
+    {
+      "name": "Santiago Villaba"
+    },
+    {
+      "name": "Mauricio Truchet"
+    }
+  ],
+  "keywords": ["react", "typescript", "vite", "tailwind", "services", "platform"],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
