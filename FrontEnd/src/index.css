@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Asegurar que el body y html ocupen toda la altura */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Asegurar que el main ocupe el espacio disponible */
+main {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Prevenir scroll horizontal */
+body {
+  overflow-x: hidden;
+}
+
+/* Mejorar el scroll en móviles */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Asegurar que los elementos no se salgan del viewport */
+.container, .max-w-7xl, .max-w-6xl, .max-w-4xl {
+  max-width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container, .max-w-7xl, .max-w-6xl, .max-w-4xl {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+/* Espaciado adicional para páginas */
+.page-content {
+  padding-bottom: 2rem;
+}
+
+/* Mejorar la calidad de las imágenes */
+img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+@media (min-width: 1024px) {
+  .container, .max-w-7xl, .max-w-6xl, .max-w-4xl {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
