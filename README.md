@@ -1,10 +1,10 @@
-# 🚀 ServiApp - Plataforma de Servicios Profesionales
+# 🚀 ServiApp Frontend
 
-Una plataforma completa que conecta clientes con proveedores de servicios profesionales, desarrollada con React, TypeScript y Tailwind CSS.
+Frontend de la plataforma ServiApp desarrollado con React, TypeScript y Vite. Una aplicación web completa para conectar usuarios con proveedores de servicios.
 
-🌐 **Aplicación en vivo:** https://serviapp-frontend.vercel.app/
-
-![ServiApp Banner](https://via.placeholder.com/800x400/3B82F6/FFFFFF?text=ServiApp+-+Conectando+Profesionales)
+🌐 **Aplicación en vivo:** http://localhost:5174/ (desarrollo)
+📦 **Repositorio:** https://github.com/facupepi/serviapp-frontend
+🔗 **Backend API:** https://iycds2025api-production.up.railway.app/
 
 ## 👥 Desarrollado por
 
@@ -14,435 +14,324 @@ Una plataforma completa que conecta clientes con proveedores de servicios profes
 
 *Universidad Tecnológica Nacional - Facultad Regional San Francisco*
 
-## 📋 Tabla de Contenidos
+## 🛠️ Stack Tecnológico
 
-- [🎯 Características](#-características)
-- [🛠️ Tecnologías](#️-tecnologías)
-- [📦 Instalación](#-instalación)
-- [🚀 Uso](#-uso)
-- [👥 Tipos de Usuario](#-tipos-de-usuario)
-- [📱 Funcionalidades](#-funcionalidades)
-- [🔧 Estructura del Proyecto](#-estructura-del-proyecto)
-- [🎨 Diseño](#-diseño)
-- [🔒 Seguridad](#-seguridad)
-- [📸 Capturas de Pantalla](#-capturas-de-pantalla)
-- [🚧 Funcionalidades Futuras](#-funcionalidades-futuras)
-- [🤝 Contribución](#-contribución)
-- [📄 Licencia](#-licencia)
+- **React 18.3.1** - Biblioteca de UI con hooks modernos y Context API
+- **TypeScript 5.5.3** - Tipado estático y desarrollo type-safe
+- **Vite 5.4.8** - Build tool y dev server ultrarrápido
+- **Tailwind CSS 3.4.1** - Framework CSS utilitario responsive
+- **React Router Dom 7.7.0** - Enrutamiento SPA con navegación programática
+- **Axios** - Cliente HTTP con interceptores para autenticación
+- **js-cookie** - Gestión segura de cookies para persistencia de sesión
+- **Lucide React 0.344.0** - Iconos SVG optimizados
 
-## 🎯 Características
+## 🏗️ Arquitectura de la Aplicación
 
-### ✅ **Características Principales**
+### Estructura del Proyecto
+```
+src/
+├── api/           # Configuración de API y endpoints
+├── components/    # Componentes reutilizables
+├── contexts/      # Context API para estado global
+├── pages/         # Páginas principales de la aplicación
+└── utils/         # Utilidades y helpers
 
-- **🔐 Sistema de Autenticación Completo**
-  - Registro de usuarios con validación
-  - Login seguro con limitación de intentos (5 máximo)
-  - Recuperación de contraseña con tokens
-  - Bloqueo temporal de cuentas (10 minutos)
-
-- **🔍 Búsqueda Avanzada de Servicios**
-  - Filtros por categoría, ubicación y precio
-  - Paginación (10 servicios por página)
-  - Sistema de favoritos
-  - Badges "Services Líder" para proveedores destacados
-
-- **📅 Sistema de Reservas**
-  - Calendario interactivo de disponibilidad
-  - Selección de horarios disponibles
-  - Proceso de reserva en 3 pasos
-  - Gestión de solicitudes en tiempo real
-
-- **⭐ Sistema de Reseñas**
-  - Calificaciones de 1 a 5 estrellas
-  - Comentarios detallados
-  - Historial de reseñas
-  - Promedio de calificaciones
-
-- **👥 Dashboards Diferenciados**
-  - **Panel Cliente**: Búsqueda, favoritos, solicitudes
-  - **Panel Proveedor**: Gestión de servicios, solicitudes recibidas
-  - Estadísticas en tiempo real
-  - Acciones rápidas personalizadas
-
-### 🎯 **Funcionalidades Específicas por Rol**
-
-#### **Para Clientes:**
-- Explorar servicios con filtros avanzados
-- Guardar servicios favoritos
-- Solicitar servicios con calendario
-- Seguimiento de solicitudes
-- Sistema de reseñas post-servicio
-- Dashboard personalizado con estadísticas
-
-#### **Para Proveedores:**
-- Crear y gestionar servicios
-- Definir zonas de cobertura
-- Configurar disponibilidad horaria
-- Aceptar/rechazar solicitudes
-- Ver estadísticas de rendimiento
-- Gestionar perfil profesional
-
-## 🛠️ Tecnologías
-
-### **Frontend**
-- ⚛️ **React 18** - Biblioteca de interfaz de usuario
-- 🔷 **TypeScript** - Tipado estático para JavaScript
-- 🚀 **Vite** - Herramienta de construcción rápida
-- 🎨 **Tailwind CSS** - Framework de CSS utilitario
-- 🧭 **React Router Dom** - Enrutamiento del lado del cliente
-- 🎭 **Lucide React** - Biblioteca de iconos moderna
-
-### **Estado y Persistencia**
-- 🗃️ **Context API** - Gestión de estado global
-- 💾 **localStorage** - Persistencia de datos local
-- 🔄 **Custom Hooks** - Lógica reutilizable
-
-### **Desarrollo**
-- 📝 **ESLint** - Linter de código
-- 🎯 **PostCSS** - Procesador de CSS
-- 🔧 **TypeScript Config** - Configuración de tipos
-
-## 📦 Instalación
-
-### **Prerrequisitos**
-- Node.js (versión 16 o superior)
-- npm o yarn
-- Git
-
-### **Pasos de Instalación**
-
-1. **Clonar el repositorio**
-```bash
-git clone https://github.com/tu-usuario/serviapp.git
-cd serviapp/FrontEnd
+public/           # Archivos estáticos
 ```
 
-2. **Instalar dependencias**
+### Características Principales
+- ✅ **Autenticación completa** - Registro, login, recuperación de contraseña
+- ✅ **Gestión de estado global** - Context API con persistencia en cookies
+- ✅ **Routing protegido** - Rutas públicas y privadas
+- ✅ **Interfaz responsive** - Diseño móvil y desktop
+- ✅ **Integración con backend** - API REST completa
+- ✅ **Manejo de errores** - Interceptores y validaciones
+- ✅ **Formularios dinámicos** - Todas las provincias argentinas
+- ✅ **Sistema de favoritos** - Persistencia local
+- ✅ **Dashboard unificado** - Panel de control para usuarios y proveedores
+
+## 📦 Instalación y Configuración
+
+### Prerrequisitos
 ```bash
+Node.js >= 18.0.0
+npm >= 9.0.0
+```
+
+### Instalación
+```bash
+# Clonar repositorio
+git clone https://github.com/facupepi/serviapp-frontend.git
+cd serviapp-frontend
+
+# Instalar dependencias
 npm install
-```
 
-3. **Configurar variables de entorno** (opcional)
-```bash
-cp .env.example .env
-# Editar .env con tus configuraciones
-```
-
-4. **Iniciar servidor de desarrollo**
-```bash
+# Iniciar servidor de desarrollo
 npm run dev
 ```
 
-5. **Abrir en el navegador**
-```
-http://localhost:5173
-```
-
-### **Scripts Disponibles**
-
+### Scripts Disponibles
 ```bash
-# Desarrollo
-npm run dev          # Inicia servidor de desarrollo
-
-# Construcción
-npm run build        # Construye para producción
-npm run preview      # Vista previa de la construcción
-
-# Linting
-npm run lint         # Ejecuta ESLint
+npm run dev      # Servidor de desarrollo (localhost:5174)
+npm run build    # Build para producción
+npm run lint     # Linting con ESLint
+npm run preview  # Preview del build de producción
 ```
+## 🔐 Autenticación y Seguridad
 
-## 🚀 Uso
+### Sistema de Autenticación
+- **JWT Tokens** - Autenticación basada en tokens
+- **Cookies seguras** - Persistencia de sesión con js-cookie
+- **Interceptores Axios** - Manejo automático de tokens
+- **Protección de rutas** - Verificación de autenticación
+- **Roles de usuario** - Sistema de permisos básico
 
-### **Usuarios de Prueba**
-
-La aplicación incluye usuarios de prueba para facilitar las pruebas:
-
+### Credenciales de Prueba
 ```bash
-# Cliente de Prueba
-Email: ana@email.com
-Password: password123
-
-# Proveedor de Prueba
-Email: carlos@email.com
-Password: password123
+Email: facujoel2018@gmail.com
+Password: facujoel2018A
 ```
 
-### **Flujo de Usuario Típico**
+### Gestión de Estado de Autenticación
+```typescript
+// AuthContext.tsx - Estados principales
+const [user, setUser] = useState<User | null>(null);
+const [loading, setLoading] = useState(true);
+const [isAuthenticated] = useState(!!user);
 
-#### **Para Clientes:**
-1. 🔐 **Registro/Login** → Crear cuenta o iniciar sesión
-2. 🔍 **Explorar** → Buscar servicios usando filtros
-3. ❤️ **Favoritos** → Guardar servicios de interés
-4. 📅 **Reservar** → Solicitar servicio con fecha/hora
-5. 📊 **Seguimiento** → Monitorear estado de solicitudes
-6. ⭐ **Reseñar** → Calificar servicio completado
-
-#### **Para Proveedores:**
-1. 🔐 **Registro** → Crear cuenta como proveedor
-2. ➕ **Crear Servicio** → Publicar nuevo servicio
-3. 🗺️ **Configurar Zonas** → Definir áreas de cobertura
-4. ⏰ **Disponibilidad** → Establecer horarios
-5. 📥 **Gestionar Solicitudes** → Aceptar/rechazar pedidos
-6. 📈 **Monitorear** → Ver estadísticas y rendimiento
-
-## 👥 Tipos de Usuario
-
-### **👤 Cliente Regular**
-- Buscar y contratar servicios
-- Gestionar favoritos y solicitudes
-- Evaluar proveedores
-- Dashboard con estadísticas personales
-
-### **🔧 Proveedor de Servicios**
-- Crear y gestionar servicios
-- Configurar disponibilidad
-- Recibir y gestionar solicitudes
-- Panel de control empresarial
-
-### **🏆 Services Líder**
-- Proveedores destacados con badge especial
-- Mayor visibilidad en búsquedas
-- Confianza adicional para clientes
-
-## 📱 Funcionalidades
-
-### **🔍 Búsqueda y Filtros**
-- **Búsqueda por texto**: Título, descripción, proveedor
-- **Filtro por categoría**: 13+ categorías disponibles
-- **Filtro geográfico**: Provincia y localidad
-- **Ordenamiento**: Por relevancia, calificación, precio
-- **Paginación**: 10 resultados por página
-
-### **📅 Sistema de Reservas**
-- **Calendario visual**: Selección fácil de fechas
-- **Horarios disponibles**: Slots de tiempo configurables
-- **Proceso paso a paso**: 3 pasos claros
-- **Confirmación instantánea**: Notificación inmediata
-
-### **⭐ Sistema de Calificaciones**
-- **Estrellas**: Calificación de 1 a 5
-- **Comentarios**: Feedback detallado
-- **Promedio**: Cálculo automático
-- **Historial**: Todas las reseñas visibles
-
-### **📊 Estadísticas y Analytics**
-- **Para Clientes**:
-  - Total de solicitudes realizadas
-  - Solicitudes pendientes/confirmadas
-  - Servicios favoritos
-  - Actividad reciente
-
-- **Para Proveedores**:
-  - Solicitudes recibidas
-  - Tasa de aceptación
-  - Servicios activos
-  - Calificación promedio
-
-## 🔧 Estructura del Proyecto
-
-```
-FrontEnd/
-├── public/                 # Archivos estáticos
-├── src/
-│   ├── components/         # Componentes reutilizables
-│   │   ├── Header.tsx
-│   │   ├── Footer.tsx
-│   │   ├── Hero.tsx
-│   │   ├── ServiceCategories.tsx
-│   │   ├── FeaturedProviders.tsx
-│   │   └── HowItWorks.tsx
-│   ├── contexts/          # Context API
-│   │   └── AuthContext.tsx
-│   ├── pages/             # Páginas principales
-│   │   ├── Dashboard.tsx
-│   │   ├── Login.tsx
-│   │   ├── Register.tsx
-│   │   ├── ServicesPage.tsx
-│   │   ├── ServiceDetail.tsx
-│   │   ├── OfferService.tsx
-│   │   ├── MyServices.tsx
-│   │   ├── FavoritesPage.tsx
-│   │   ├── UserRequestsPage.tsx
-│   │   ├── ProviderRequestsPage.tsx
-│   │   └── ...
-│   ├── App.tsx            # Componente principal
-│   ├── main.tsx          # Punto de entrada
-│   └── index.css         # Estilos globales
-├── package.json          # Dependencias
-├── vite.config.ts       # Configuración Vite
-├── tailwind.config.js   # Configuración Tailwind
-└── tsconfig.json        # Configuración TypeScript
+// Persistencia en cookies
+const token = tokenStorage.getToken();
+const userData = userStorage.getUser();
 ```
 
-## 🎨 Diseño
+## 🌍 Integración con Backend
 
-### **🎯 Principios de Diseño**
-- **Mobile First**: Responsive en todos los dispositivos
-- **Accesibilidad**: Colores contrastantes y navegación clara
-- **Consistencia**: Sistema de diseño unificado
-- **Usabilidad**: Interfaces intuitivas y flujos simples
+### API Endpoints
+```typescript
+// Base URL
+const API_BASE = 'https://iycds2025api-production.up.railway.app';
 
-### **🎨 Paleta de Colores**
-- **Primario**: Azul (#3B82F6)
-- **Secundario**: Gris (#6B7280)
-- **Éxito**: Verde (#10B981)
-- **Advertencia**: Amarillo (#F59E0B)
-- **Error**: Rojo (#EF4444)
+// Endpoints principales
+POST /api/user/register  # Registro de usuarios
+POST /api/user/login     # Inicio de sesión
+GET  /api/services       # Listado de servicios
+POST /api/services       # Crear servicio
+```
 
-### **📱 Responsive**
-- **Mobile**: < 768px
-- **Tablet**: 768px - 1024px
-- **Desktop**: > 1024px
+### Configuración Axios
+```typescript
+// api/auth.ts
+const authAPI = axios.create({
+  baseURL: 'https://iycds2025api-production.up.railway.app',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-## 🔒 Seguridad
+// Interceptores para manejo automático de tokens
+authAPI.interceptors.request.use((config) => {
+  const token = tokenStorage.getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+```
 
-### **🛡️ Medidas de Seguridad Implementadas**
+## 📱 Páginas y Funcionalidades
 
-- **Limitación de Intentos de Login**:
-  - Máximo 5 intentos fallidos
-  - Bloqueo temporal de 10 minutos
-  - Contador visible de intentos restantes
-
-- **Validación de Datos**:
-  - Validación de email en tiempo real
-  - Fortaleza de contraseñas
-  - Sanitización de inputs
-
-- **Protección de Rutas**:
-  - Rutas protegidas por autenticación
-  - Redirección automática
-  - Verificación de roles
-
-- **Almacenamiento Seguro**:
-  - Tokens en localStorage
-  - Limpieza automática al logout
-  - Validación de sesión
-
-## 📸 Capturas de Pantalla
-
-### **🏠 Página Principal**
-- Hero section con call-to-action
-- Categorías de servicios
+### Página Principal (Home)
+- Hero section con llamada a la acción
+- Categorías de servicios populares
 - Proveedores destacados
 - Cómo funciona la plataforma
 
-### **🔍 Búsqueda de Servicios**
-- Grid de servicios con imágenes
-- Filtros laterales
-- Paginación
-- Sistema de favoritos
+### Autenticación
+- **Login** - Autenticación con validación y límite de intentos
+- **Registro** - Formulario completo con todas las provincias argentinas
+- **Recuperación de contraseña** - Flujo completo de reset
 
-### **📊 Dashboard Cliente**
-- Estadísticas personales
-- Acciones rápidas
-- Actividad reciente
-- Navegación intuitiva
+### Dashboard Unificado
+- **Estadísticas personalizadas** por tipo de usuario
+- **Gestión de servicios** (para proveedores)
+- **Solicitudes activas** (usuarios y proveedores)
+- **Servicios favoritos**
+- **Perfil y configuración**
 
-### **🛠️ Dashboard Proveedor**
-- Métricas de negocio
-- Gestión de servicios
-- Solicitudes pendientes
-- Herramientas de administración
+### Servicios
+- **Búsqueda avanzada** con filtros por categoría y ubicación
+- **Detalle de servicios** con información completa del proveedor
+- **Sistema de reservas** con selección de fecha y hora
+- **Reseñas y calificaciones**
 
-## 🚧 Funcionalidades Futuras
+### Gestión para Proveedores
+- **Crear servicios** con disponibilidad y zonas de cobertura
+- **Gestionar solicitudes** - aceptar/rechazar reservas
+- **Mi perfil de proveedor** con estadísticas
 
-### **📈 Mejoras Planificadas**
+## 🎨 Diseño y UX
 
-- **💬 Sistema de Chat**
-  - Comunicación directa cliente-proveedor
-  - Notificaciones en tiempo real
-  - Historial de conversaciones
+### Principios de Diseño
+- **Mobile First** - Diseño responsivo desde mobile
+- **Accesibilidad** - Contraste adecuado y navegación por teclado
+- **Consistencia visual** - Sistema de diseño coherente
+- **Feedback inmediato** - Loading states y mensajes de confirmación
 
-- **💳 Integración de Pagos**
-  - Múltiples métodos de pago
-  - Pagos seguros online
-  - Facturación automática
+### Componentes de UI
+```typescript
+// Ejemplos de componentes reutilizables
+<StatCard />        # Tarjetas de estadísticas
+<ServiceCard />     # Tarjetas de servicios
+<LoadingSpinner />  # Indicadores de carga
+<Alert />           # Mensajes de notificación
+```
 
-- **📱 Aplicación Móvil**
-  - App nativa iOS/Android
-  - Notificaciones push
-  - Geolocalización
+## 🔧 Configuración de Desarrollo
 
-- **🤖 IA y Machine Learning**
-  - Recomendaciones personalizadas
-  - Detección de fraude
-  - Optimización de precios
+### Variables de Entorno
+```bash
+# Para desarrollo local
+VITE_API_URL=https://iycds2025api-production.up.railway.app
+```
 
-- **📊 Analytics Avanzado**
-  - Dashboard de métricas
-  - Reportes detallados
-  - Insights de negocio
+### Configuración de Cookies
+```typescript
+// utils/storage.ts
+const DEV_COOKIE_CONFIG = {
+  expires: 7,
+  secure: false,      // HTTP permitido en desarrollo
+  sameSite: 'lax',    # Más permisivo para desarrollo
+  path: '/',
+};
+```
 
-### **🔧 Mejoras Técnicas**
+## 🐛 Debugging y Troubleshooting
 
-- **Backend Real**
-  - API REST con Node.js
-  - Base de datos PostgreSQL
-  - Autenticación JWT
+### Logs de Desarrollo
+La aplicación incluye logging extensivo para debugging:
 
-- **Testing**
-  - Tests unitarios con Jest
-  - Tests de integración
-  - Tests E2E con Cypress
+```typescript
+// Logs de autenticación
+🔄 Inicializando AuthContext
+✅ Usuario restaurado desde storage
+🔐 Iniciando proceso de login
+💾 Guardando token en cookies
+```
 
-- **Performance**
-  - Lazy loading
-  - Optimización de imágenes
-  - Service Workers
+### Problemas Comunes y Soluciones
+
+1. **Cookie no persiste al recargar**
+   - Verificar configuración `sameSite` y `secure`
+   - Confirmar que `path: '/'` está configurado
+
+2. **Error 400 en login/registro**
+   - Verificar formato de datos enviados
+   - Confirmar headers `Content-Type: application/json`
+
+3. **Redirección inesperada al login**
+   - Verificar estado `loading` en componentes protegidos
+   - Confirmar que `isAuthenticated` se evalúa después de la carga
+
+### Herramientas de Debug
+```typescript
+// Debug en consola del navegador
+console.log('🔍 Estado de autenticación:', {
+  loading,
+  isAuthenticated,
+  user: user ? { id: user.id, email: user.email } : null,
+  tokenExists: document.cookie.includes('authToken')
+});
+```
+
+## 📊 Estado Actual del Proyecto
+
+### ✅ Completado
+- [x] Configuración inicial de React + TypeScript + Vite
+- [x] Sistema de autenticación completo con backend
+- [x] Gestión de estado global con Context API
+- [x] Persistencia de sesión con cookies seguras
+- [x] Todas las páginas principales implementadas
+- [x] Formularios con validación completa
+- [x] Sistema de rutas protegidas
+- [x] Integración completa con API backend
+- [x] Manejo de errores y estados de carga
+- [x] Diseño responsive con Tailwind CSS
+- [x] Debugging y logging para desarrollo
+
+### 🔄 En Desarrollo
+- [ ] Tests unitarios con Jest + Testing Library
+- [ ] Optimización de performance
+- [ ] PWA capabilities
+- [ ] Notificaciones push
+
+### 🎯 Próximas Mejoras
+- [ ] Sistema de chat en tiempo real
+- [ ] Integración con pasarelas de pago
+- [ ] Geolocalización avanzada
+- [ ] Sistema de notificaciones por email
+
+## 📝 Notas de Desarrollo
+
+### Patrones Implementados
+- **Context API** para estado global
+- **Custom Hooks** para lógica reutilizable
+- **Compound Components** para componentes complejos
+- **Error Boundaries** para manejo de errores
+- **Loading States** para mejor UX
+
+### Mejores Prácticas
+- Tipado estricto con TypeScript
+- Componentes funcionales con hooks
+- Separación de responsabilidades
+- Código limpio y documentado
+- Manejo consistente de errores
+
+---
 
 ## 🤝 Contribución
 
-### **🚀 Cómo Contribuir**
+Para contribuir al proyecto:
 
-1. **Fork** el repositorio
-2. **Crear** una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. **Commit** tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. **Push** a la rama (`git push origin feature/AmazingFeature`)
-5. **Abrir** un Pull Request
-
-### **📋 Lineamientos**
-
-- Seguir las convenciones de código existentes
-- Escribir tests para nuevas funcionalidades
-- Actualizar documentación según sea necesario
-- Usar mensajes de commit descriptivos
-
-### **🐛 Reportar Bugs**
-
-- Usar el sistema de Issues de GitHub
-- Incluir pasos para reproducir
-- Adjuntar capturas de pantalla si es relevante
-- Especificar navegador y versión
+1. Fork del repositorio
+2. Crear una rama feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit de cambios (`git commit -m 'Agregar nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Crear Pull Request
 
 ## 📄 Licencia
 
-Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
+Este proyecto es parte del curso de Ingeniería y Calidad de Software de la UTN-FRSF.
 
 ---
 
-## 📞 Contacto
+**Desarrollado con ❤️ por el equipo de ServiApp**
+       proxy: {
+         '/api': 'http://localhost:3000'
+       }
+     }
+   })
+   ```
 
-### **👨‍💻 Desarrolladores**
-- **Facundo Pepino**
-  - **GitHub**: [@facupepi](https://github.com/facupepi)
-  - **Email**: fpepino@facultad.sanfrancisco.utn.edu.ar
-  - **LinkedIn**: [Facundo Pepino](https://www.linkedin.com/in/facundo-pepino/)
-- **Santiago Villaba**
-- **Mauricio Truchet**
+2. **Problemas con TypeScript**
+   ```bash
+   # Limpiar caché de TypeScript
+   npx tsc --build --clean
+   ```
 
-*Universidad Tecnológica Nacional - Facultad Regional San Francisco*
+3. **Problemas con Tailwind**
+   ```bash
+   # Regenerar estilos
+   npx tailwindcss -i ./src/index.css -o ./dist/output.css --watch
+   ```
 
-### **🔗 Enlaces del Proyecto**
-- **Frontend en Vivo**: [https://serviapp-frontend.vercel.app/](https://serviapp-frontend.vercel.app/)
-- **Repositorio GitHub**: [https://github.com/facupepi/serviapp-frontend](https://github.com/facupepi/serviapp-frontend)
+## 📚 Recursos Adicionales
+
+- [React Documentation](https://reactjs.org/docs)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs)
+- [Tailwind CSS Docs](https://tailwindcss.com/docs)
+- [Vite Guide](https://vitejs.dev/guide)
 
 ---
 
-<div align="center">
-
-**🌟 Si te gusta este proyecto, ¡dale una estrella! ⭐**
-
-**Hecho con ❤️ por el equipo de ServiApp**
-
-</div>
+**Desarrollado con ❤️ usando las mejores prácticas de React y TypeScript**
