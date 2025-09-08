@@ -2,7 +2,7 @@
 
 Frontend de la plataforma ServiApp desarrollado con React, TypeScript y Vite. Una aplicación web completa para conectar usuarios con proveedores de servicios.
 
-🌐 **Aplicación en vivo:** http://localhost:5174/ (desarrollo)
+🌐 **Aplicación en vivo:** https://serviapp-frontend.vercel.app/
 📦 **Repositorio:** https://github.com/facupepi/serviapp-frontend
 🔗 **Backend API:** https://iycds2025api-production.up.railway.app/
 
