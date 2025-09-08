@@ -8,14 +8,89 @@ import {
   Star,
   MapPin,
   Calendar,
-  ArrowLeft
+  ArrowLeft,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
+
+interface ConfirmDialogProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmText: string;
+  cancelText: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  type: 'danger' | 'warning';
+}
+
+const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
+  isOpen,
+  title,
+  message,
+  confirmText,
+  cancelText,
+  onConfirm,
+  onCancel,
+  type
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-md w-full p-6">
+        <div className="flex items-center mb-4">
+          {type === 'danger' ? (
+            <AlertTriangle className="h-6 w-6 text-red-500 mr-3" />
+          ) : (
+            <AlertTriangle className="h-6 w-6 text-yellow-500 mr-3" />
+          )}
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        </div>
+        
+        <p className="text-gray-600 mb-6">{message}</p>
+        
+        <div className="flex space-x-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors ${
+              type === 'danger' 
+                ? 'bg-red-600 hover:bg-red-700' 
+                : 'bg-yellow-600 hover:bg-yellow-700'
+            }`}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function MyServices() {
   const navigate = useNavigate();
-  const { isAuthenticated, user, services, deactivateService } = useAuth();
+  const { isAuthenticated, user, services, deactivateService, reactivateService, deleteService } = useAuth();
+  const { addNotification } = useNotifications();
   const [loading, setLoading] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    type: 'deactivate' | 'reactivate' | 'delete';
+    serviceId: string;
+    serviceName: string;
+  }>({
+    isOpen: false,
+    type: 'deactivate',
+    serviceId: '',
+    serviceName: ''
+  });
 
   // Redirigir si no está autenticado
   if (!isAuthenticated || !user) {
@@ -23,32 +98,89 @@ export default function MyServices() {
     return null;
   }
 
-  // Todos los usuarios pueden tener servicios ahora
-  // Ya no necesitamos verificar isProvider
-
   // Filtrar servicios del proveedor actual
   const myServices = services.filter(service => service.providerId === user.id);
 
-  const handleToggleService = async (serviceId: string, isActive: boolean) => {
+  const handleServiceAction = async (action: 'deactivate' | 'reactivate' | 'delete', serviceId: string) => {
     setLoading(true);
     try {
-      if (!isActive) {
-        // Reactivar servicio (por ahora solo mostrar mensaje)
-        alert('Funcionalidad de reactivación en desarrollo');
+      let result;
+      let successMessage = '';
+      
+      switch (action) {
+        case 'deactivate':
+          result = await deactivateService(serviceId);
+          successMessage = 'Servicio desactivado exitosamente';
+          break;
+        case 'reactivate':
+          result = await reactivateService(serviceId);
+          successMessage = 'Servicio reactivado exitosamente';
+          break;
+        case 'delete':
+          result = await deleteService(serviceId);
+          successMessage = 'Servicio eliminado exitosamente';
+          break;
+      }
+
+      if (result.success) {
+        addNotification({
+          type: 'success',
+          message: successMessage
+        });
       } else {
-        // Desactivar servicio
-        const result = await deactivateService(serviceId);
-        if (result.success) {
-          alert('Servicio desactivado exitosamente');
-          // La página se actualizará automáticamente gracias al contexto
-        } else {
-          alert(result.error || 'Error al desactivar el servicio');
-        }
+        addNotification({
+          type: 'error',
+          message: result.error || 'Error al realizar la operación'
+        });
       }
     } catch (error) {
-      alert('Error al cambiar el estado del servicio');
+      addNotification({
+        type: 'error',
+        message: 'Error inesperado al realizar la operación'
+      });
     } finally {
       setLoading(false);
+      setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+    }
+  };
+
+  const openConfirmDialog = (type: 'deactivate' | 'reactivate' | 'delete', serviceId: string, serviceName: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      type,
+      serviceId,
+      serviceName
+    });
+  };
+
+  const getConfirmDialogConfig = () => {
+    const { type, serviceName } = confirmDialog;
+    
+    switch (type) {
+      case 'deactivate':
+        return {
+          title: 'Desactivar Servicio',
+          message: `¿Estás seguro de que quieres desactivar "${serviceName}"? El servicio se ocultará para nuevos clientes pero conservará su información.`,
+          confirmText: 'Desactivar',
+          cancelText: 'Cancelar',
+          type: 'warning' as const
+        };
+      case 'reactivate':
+        return {
+          title: 'Reactivar Servicio',
+          message: `¿Quieres reactivar "${serviceName}"? El servicio volverá a ser visible para los clientes.`,
+          confirmText: 'Reactivar',
+          cancelText: 'Cancelar',
+          type: 'warning' as const
+        };
+      case 'delete':
+        return {
+          title: 'Eliminar Servicio',
+          message: `¿Estás seguro de que quieres eliminar "${serviceName}"? Esta acción es irreversible y se perderá toda la información del servicio.`,
+          confirmText: 'Eliminar',
+          cancelText: 'Cancelar',
+          type: 'danger' as const
+        };
     }
   };
 
@@ -102,43 +234,62 @@ export default function MyServices() {
         <div className="flex items-center justify-between">
           <div className="flex space-x-2">
             <button
-              onClick={() => navigate(`/servicios/${service.id}`)}
+              onClick={() => navigate(`/service/${service.id}`)}
               className="flex items-center px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+              title="Ver servicio"
             >
               <Eye className="h-4 w-4 mr-1" />
               Ver
             </button>
             
             <button
-              onClick={() => navigate(`/editar-servicio/${service.id}`)}
+              onClick={() => navigate(`/edit-service/${service.id}`)}
               className="flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              title="Editar servicio"
             >
               <Edit className="h-4 w-4 mr-1" />
               Editar
             </button>
           </div>
           
-          <button
-            onClick={() => handleToggleService(service.id, service.isActive)}
-            disabled={loading}
-            className={`flex items-center px-3 py-2 rounded-lg transition-colors disabled:opacity-50 ${
-              service.isActive
-                ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                : 'bg-green-100 text-green-700 hover:bg-green-200'
-            }`}
-          >
-            {service.isActive ? (
-              <>
-                <EyeOff className="h-4 w-4 mr-1" />
-                Desactivar
-              </>
-            ) : (
-              <>
-                <Eye className="h-4 w-4 mr-1" />
-                Activar
-              </>
-            )}
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => openConfirmDialog(
+                service.isActive ? 'deactivate' : 'reactivate',
+                service.id,
+                service.title
+              )}
+              disabled={loading}
+              className={`flex items-center px-3 py-2 rounded-lg transition-colors disabled:opacity-50 ${
+                service.isActive
+                  ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
+              title={service.isActive ? 'Desactivar servicio' : 'Reactivar servicio'}
+            >
+              {service.isActive ? (
+                <>
+                  <EyeOff className="h-4 w-4 mr-1" />
+                  Desactivar
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4 mr-1" />
+                  Reactivar
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={() => openConfirmDialog('delete', service.id, service.title)}
+              disabled={loading}
+              className="flex items-center px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50"
+              title="Eliminar servicio permanentemente"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Eliminar
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -168,7 +319,7 @@ export default function MyServices() {
             </div>
             
             <button
-              onClick={() => navigate('/ofrecer-servicio')}
+              onClick={() => navigate('/offer-service')}
               className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Plus className="h-5 w-5 mr-2" />
@@ -242,7 +393,7 @@ export default function MyServices() {
               Crea tu primer servicio para que los clientes puedan encontrarte
             </p>
             <button
-              onClick={() => navigate('/ofrecer-servicio')}
+              onClick={() => navigate('/offer-service')}
               className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors mx-auto"
             >
               <Plus className="h-5 w-5 mr-2" />
@@ -251,6 +402,14 @@ export default function MyServices() {
           </div>
         )}
       </div>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        {...getConfirmDialogConfig()}
+        isOpen={confirmDialog.isOpen}
+        onConfirm={() => handleServiceAction(confirmDialog.type, confirmDialog.serviceId)}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

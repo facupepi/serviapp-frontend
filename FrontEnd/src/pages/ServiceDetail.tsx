@@ -48,7 +48,7 @@ export default function ServiceDetail() {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Servicio no encontrado</h2>
           <button
-            onClick={() => navigate('/servicios')}
+            onClick={() => navigate('/services')}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
           >
             Volver a servicios

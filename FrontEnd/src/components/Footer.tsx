@@ -1,4 +1,3 @@
-import React from 'react';
 import { Search, Facebook, Twitter, Instagram, Mail, Phone, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -36,11 +35,11 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-semibold mb-4">Servicios</h3>
             <ul className="space-y-3">
-              <li><Link to="/servicios?category=Hogar y Reparaciones" className="text-gray-300 hover:text-white transition-colors">Hogar y Reparaciones</Link></li>
-              <li><Link to="/servicios?category=Electricidad" className="text-gray-300 hover:text-white transition-colors">Electricidad</Link></li>
-              <li><Link to="/servicios?category=Limpieza" className="text-gray-300 hover:text-white transition-colors">Limpieza</Link></li>
-              <li><Link to="/servicios?category=Jardinería" className="text-gray-300 hover:text-white transition-colors">Jardinería</Link></li>
-              <li><Link to="/servicios?category=Tecnología" className="text-gray-300 hover:text-white transition-colors">Tecnología</Link></li>
+              <li><Link to="/services?category=Hogar y Reparaciones" className="text-gray-300 hover:text-white transition-colors">Hogar y Reparaciones</Link></li>
+              <li><Link to="/services?category=Electricidad" className="text-gray-300 hover:text-white transition-colors">Electricidad</Link></li>
+              <li><Link to="/services?category=Limpieza" className="text-gray-300 hover:text-white transition-colors">Limpieza</Link></li>
+              <li><Link to="/services?category=Jardinería" className="text-gray-300 hover:text-white transition-colors">Jardinería</Link></li>
+              <li><Link to="/services?category=Tecnología" className="text-gray-300 hover:text-white transition-colors">Tecnología</Link></li>
             </ul>
           </div>
 
@@ -48,11 +47,11 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-semibold mb-4">Empresa</h3>
             <ul className="space-y-3">
-              <li><Link to="/sobre-nosotros" className="text-gray-300 hover:text-white transition-colors">Sobre Nosotros</Link></li>
-              <li><Link to="/como-funciona" className="text-gray-300 hover:text-white transition-colors">Cómo Funciona</Link></li>
-              <li><Link to="/terminos-y-condiciones" className="text-gray-300 hover:text-white transition-colors">Términos y Condiciones</Link></li>
-              <li><Link to="/politica-de-privacidad" className="text-gray-300 hover:text-white transition-colors">Política de Privacidad</Link></li>
-              <li><Link to="/ayuda" className="text-gray-300 hover:text-white transition-colors">Ayuda</Link></li>
+              <li><Link to="/about-us" className="text-gray-300 hover:text-white transition-colors">Sobre Nosotros</Link></li>
+              <li><Link to="/how-it-works" className="text-gray-300 hover:text-white transition-colors">Cómo Funciona</Link></li>
+              <li><Link to="/terms-and-conditions" className="text-gray-300 hover:text-white transition-colors">Términos y Condiciones</Link></li>
+              <li><Link to="/privacy-policy" className="text-gray-300 hover:text-white transition-colors">Política de Privacidad</Link></li>
+              <li><Link to="/help" className="text-gray-300 hover:text-white transition-colors">Ayuda</Link></li>
             </ul>
           </div>
         </div>
@@ -81,10 +80,10 @@ export default function Footer() {
             © 2024 ServiApp. Todos los derechos reservados.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
-            <Link to="/politica-de-privacidad" className="text-gray-400 hover:text-white text-sm transition-colors">
+            <Link to="/privacy-policy" className="text-gray-400 hover:text-white text-sm transition-colors">
               Política de Privacidad
             </Link>
-            <Link to="/terminos-y-condiciones" className="text-gray-400 hover:text-white text-sm transition-colors">
+            <Link to="/terms-and-conditions" className="text-gray-400 hover:text-white text-sm transition-colors">
               Términos de Uso
             </Link>
           </div>

@@ -1,7 +1,24 @@
-import React from 'react';
 import { Search, Users, CheckCircle, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
-const steps = [
+export default function HowItWorks() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  const handleSearchServices = () => {
+    navigate('/services');
+  };
+
+  const handleOfferServices = () => {
+    if (isAuthenticated) {
+      navigate('/offer-service');
+    } else {
+      navigate('/login');
+    }
+  };
+
+  const steps = [
   {
     icon: Search,
     title: 'Busca y compara',
@@ -28,7 +45,6 @@ const steps = [
   }
 ];
 
-export default function HowItWorks() {
   return (
     <section className="py-16 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -81,10 +97,16 @@ export default function HowItWorks() {
             Únete a miles de usuarios que ya confían en nuestra plataforma para encontrar profesionales de calidad.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+            <button 
+              onClick={handleSearchServices}
+              className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            >
               Buscar Servicios
             </button>
-            <button className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors">
+            <button 
+              onClick={handleOfferServices}
+              className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors"
+            >
               Ofrecer Servicios
             </button>
           </div>

@@ -118,7 +118,7 @@ export default function Dashboard() {
       title: 'Buscar Servicios',
       description: 'Encuentra el servicio que necesitas entre cientos de profesionales verificados',
       action: 'Explorar Servicios',
-      onClick: () => navigate('/servicios'),
+      onClick: () => navigate('/services'),
       color: 'bg-blue-500'
     },
     {
@@ -126,7 +126,7 @@ export default function Dashboard() {
       title: 'Ofrecer Servicio',
       description: 'Publica un nuevo servicio para que los clientes puedan encontrarte',
       action: 'Crear Servicio',
-      onClick: () => navigate('/ofrecer-servicio'),
+      onClick: () => navigate('/offer-service'),
       color: 'bg-green-500'
     },
     {
@@ -158,7 +158,7 @@ export default function Dashboard() {
       title: 'Mis Servicios',
       description: 'Administra todos los servicios que tienes publicados',
       action: 'Gestionar Servicios',
-      onClick: () => navigate('/mis-servicios'),
+      onClick: () => navigate('/my-services'),
       color: 'bg-orange-500'
     }
   ];

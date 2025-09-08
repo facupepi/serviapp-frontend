@@ -42,7 +42,10 @@ export default function Header() {
             <Link to="/services" className="text-gray-700 hover:text-blue-600 transition-colors">
               Servicios
             </Link>
-            <Link to="/offer-service" className="text-gray-700 hover:text-blue-600 transition-colors">
+            <Link 
+              to={isAuthenticated ? "/offer-service" : "/login"} 
+              className="text-gray-700 hover:text-blue-600 transition-colors"
+            >
               Ofrecer Servicio
             </Link>
             {isAuthenticated ? (
@@ -117,7 +120,10 @@ export default function Header() {
             <Link to="/services" className="block text-gray-700 hover:text-blue-600 transition-colors">
               Servicios
             </Link>
-            <Link to="/offer-service" className="block text-gray-700 hover:text-blue-600 transition-colors">
+            <Link 
+              to={isAuthenticated ? "/offer-service" : "/login"} 
+              className="block text-gray-700 hover:text-blue-600 transition-colors"
+            >
               Ofrecer Servicio
             </Link>
             {isAuthenticated ? (

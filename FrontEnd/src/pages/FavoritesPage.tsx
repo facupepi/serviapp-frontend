@@ -17,7 +17,7 @@ export default function FavoritesPage() {
   const favoriteServices = services.filter(service => favorites.includes(service.id));
 
   const handleServiceClick = (serviceId: string) => {
-    navigate(`/servicio/${serviceId}`);
+    navigate(`/service/${serviceId}`);
   };
 
   const handleRemoveFavorite = (serviceId: string, e: React.MouseEvent) => {
@@ -50,7 +50,7 @@ export default function FavoritesPage() {
               Explorá y guardá tus favoritos para contratarlos después.
             </p>
             <button
-              onClick={() => navigate('/servicios')}
+              onClick={() => navigate('/services')}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
             >
               Explorar Servicios

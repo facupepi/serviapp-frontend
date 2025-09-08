@@ -163,7 +163,7 @@ export default function UserRequestsPage() {
               Cuando solicites un servicio, aparecerá aquí para que puedas hacer seguimiento.
             </p>
             <button
-              onClick={() => navigate('/servicios')}
+              onClick={() => navigate('/services')}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
             >
               Buscar Servicios

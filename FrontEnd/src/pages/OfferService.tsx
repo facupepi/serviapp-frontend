@@ -10,6 +10,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 
 interface AvailabilityDay {
   enabled: boolean;
@@ -36,6 +37,7 @@ interface FormData {
 export default function OfferService() {
   const navigate = useNavigate();
   const { isAuthenticated, user, createService } = useAuth();
+  const { addNotification } = useNotifications();
 
   // Redirigir si no está autenticado
   if (!isAuthenticated || !user) {
@@ -273,13 +275,22 @@ export default function OfferService() {
       const result = await createService(serviceData);
       
       if (result.success) {
-        alert('¡Servicio creado exitosamente!');
-        navigate('/dashboard');
+        addNotification({
+          type: 'success',
+          message: '¡Servicio creado exitosamente!'
+        });
+        navigate('/my-services');
       } else {
-        alert(result.error || 'Error al crear el servicio');
+        addNotification({
+          type: 'error',
+          message: result.error || 'Error al crear el servicio'
+        });
       }
     } catch (error) {
-      alert('Error al crear el servicio');
+      addNotification({
+        type: 'error',
+        message: 'Error inesperado al crear el servicio'
+      });
     } finally {
       setLoading(false);
     }

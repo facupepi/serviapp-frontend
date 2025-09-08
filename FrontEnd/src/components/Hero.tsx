@@ -11,11 +11,11 @@ export default function Hero() {
     const params = new URLSearchParams();
     if (searchTerm) params.set('q', searchTerm);
     if (selectedLocation) params.set('location', selectedLocation);
-    navigate(`/servicios?${params.toString()}`);
+    navigate(`/services?${params.toString()}`);
   };
 
   const handleCategoryClick = (category: string) => {
-    navigate(`/servicios?category=${encodeURIComponent(category)}`);
+    navigate(`/services?category=${encodeURIComponent(category)}`);
   };
   return (
     <section className="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 text-white py-20">

@@ -47,7 +47,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isFavorite, onToggle
   const navigate = useNavigate();
 
   const handleCardClick = () => {
-    navigate(`/servicio/${service.id}`);
+    navigate(`/service/${service.id}`);
   };
 
   const handleFavoriteClick = (e: React.MouseEvent) => {

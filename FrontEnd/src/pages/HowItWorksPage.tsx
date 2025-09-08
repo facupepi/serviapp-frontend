@@ -1,4 +1,3 @@
-import React from 'react';
 import { Search, Users, CheckCircle, Star, ArrowRight, Play } from 'lucide-react';
 
 export default function HowItWorksPage() {
@@ -235,7 +234,7 @@ export default function HowItWorksPage() {
 
           <div className="text-center mt-12">
             <a
-              href="/ofrecer-servicio"
+              href="/offer-service"
               className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors inline-flex items-center space-x-2"
             >
               <span>Comenzar como proveedor</span>

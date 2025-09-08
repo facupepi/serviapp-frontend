@@ -92,6 +92,8 @@ interface AuthContextType {
   createService: (serviceData: CreateServiceData) => Promise<{ success: boolean; error?: string }>;
   updateService: (serviceId: string, serviceData: CreateServiceData) => Promise<{ success: boolean; error?: string }>;
   deactivateService: (serviceId: string) => Promise<{ success: boolean; error?: string }>;
+  reactivateService: (serviceId: string) => Promise<{ success: boolean; error?: string }>;
+  deleteService: (serviceId: string) => Promise<{ success: boolean; error?: string }>;
   isAuthenticated: boolean;
   loading: boolean;
   loginAttempts: number;
@@ -315,7 +317,7 @@ const mockProviders: User[] = [
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [services] = useState<Service[]>(mockServices);
+  const [services, setServices] = useState<Service[]>(mockServices);
   const [userRequests, setUserRequests] = useState<ServiceRequest[]>([]);
   const [providerRequests, setProviderRequests] = useState<ServiceRequest[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -925,6 +927,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: 'Debes estar autenticado para editar servicios' };
       }
 
+      // Simulación de actualización con datos reales
+      setServices(prevServices => 
+        prevServices.map(service => 
+          service.id === serviceId && service.providerId === user.id
+            ? {
+                ...service,
+                title: serviceData.title,
+                description: serviceData.description,
+                category: serviceData.category,
+                zones: serviceData.zones,
+                availability: serviceData.availability.map(avail => ({
+                  day: avail.day,
+                  timeSlots: avail.timeSlots
+                })),
+                image: serviceData.image
+              }
+            : service
+        )
+      );
+
       console.log('Service updated:', { serviceId, serviceData });
       return { success: true };
     } catch (error) {
@@ -938,7 +960,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: 'Debes estar autenticado para desactivar servicios' };
       }
 
+      // Actualizar estado del servicio en memoria
+      setServices(prevServices => 
+        prevServices.map(service => 
+          service.id === serviceId && service.providerId === user.id
+            ? { ...service, isActive: false }
+            : service
+        )
+      );
+
       console.log('Service deactivated:', serviceId);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'Error del servidor' };
+    }
+  };
+
+  const reactivateService = async (serviceId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (!user) {
+        return { success: false, error: 'Debes estar autenticado para reactivar servicios' };
+      }
+
+      // Actualizar estado del servicio en memoria
+      setServices(prevServices => 
+        prevServices.map(service => 
+          service.id === serviceId && service.providerId === user.id
+            ? { ...service, isActive: true }
+            : service
+        )
+      );
+
+      console.log('Service reactivated:', serviceId);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'Error del servidor' };
+    }
+  };
+
+  const deleteService = async (serviceId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (!user) {
+        return { success: false, error: 'Debes estar autenticado para eliminar servicios' };
+      }
+
+      // Eliminar servicio de memoria
+      setServices(prevServices => 
+        prevServices.filter(service => 
+          !(service.id === serviceId && service.providerId === user.id)
+        )
+      );
+
+      console.log('Service deleted:', serviceId);
       return { success: true };
     } catch (error) {
       return { success: false, error: 'Error del servidor' };
@@ -971,6 +1044,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     createService,
     updateService,
     deactivateService,
+    reactivateService,
+    deleteService,
     isAuthenticated: !!user,
     loading,
     loginAttempts,

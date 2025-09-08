@@ -264,7 +264,7 @@ export default function ProviderRequestsPage() {
               Las solicitudes de tus servicios aparecerán aquí para que puedas gestionarlas.
             </p>
             <button
-              onClick={() => navigate('/ofrecer-servicio')}
+              onClick={() => navigate('/offer-service')}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
             >
               Crear un Servicio

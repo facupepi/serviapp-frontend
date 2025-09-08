@@ -1,4 +1,3 @@
-import React from 'react';
 import { Users, Target, Award, Heart } from 'lucide-react';
 
 export default function AboutUs() {
@@ -27,22 +26,25 @@ export default function AboutUs() {
 
   const team = [
     {
-      name: 'Ana García',
-      role: 'CEO & Fundadora',
-      image: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop',
-      description: 'Emprendedora con más de 10 años de experiencia en tecnología y servicios.'
+      name: 'Facundo Pepino',
+      role: 'Developer',
+      image: 'https://media.licdn.com/dms/image/v2/D4D03AQHmHNuksHKSng/profile-displayphoto-scale_200_200/B4DZhXc1brG8AY-/0/1753813835340?e=1759968000&v=beta&t=u8h_F_m91AYurowWjt5Yx-HIZkrBlHI115ahzwkaHck',
+      description: 'Estudiante avanzado de Ingeniería en Sistemas de Información, con una visión enfocada en crear soluciones tecnológicas que generen impacto real en las empresas. Comprendo las necesidades del negocio y las traduzco en soluciones técnicas simples.',
+      linkedin: 'https://www.linkedin.com/in/facundo-pepino/'
     },
     {
-      name: 'Carlos Rodríguez',
-      role: 'CTO',
-      image: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop',
-      description: 'Ingeniero en sistemas especializado en plataformas digitales y experiencia de usuario.'
+      name: 'Mauricio Truchet',
+      role: 'Software Engineer',
+      image: 'https://media.licdn.com/dms/image/v2/D4D03AQEplRPeIPXz9Q/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1726600480158?e=1759968000&v=beta&t=LGW8IPfOPxv_9ZZIuwXwjOjtZO2c65I0Hhes7AOX5d0',
+      description: 'Especializado en análisis de requerimientos, diseño, implementación, testing, monitoreo y post producción. Desarrollo Back-End en aplicaciones REST, arquitecturas de microservicios, y Go.',
+      linkedin: 'https://www.linkedin.com/in/mauricio-truchet-385a86198/'
     },
     {
-      name: 'María López',
-      role: 'Directora de Operaciones',
-      image: 'https://images.pexels.com/photos/1239288/pexels-photo-1239288.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop',
-      description: 'Experta en gestión de operaciones y desarrollo de comunidades digitales.'
+      name: 'Santiago Villalba',
+      role: 'Developer',
+      image: 'https://santiagovillalba.flyweb.com.ar/assets/img/hero/perfil.png',
+      description: 'Desarrollador WEB enfocado en la creación de sitios web personalizables y altamente funcionales. Especializado en diseño y desarrollo de páginas institucionales, landing pages y sitios de ecommerce.',
+      linkedin: 'https://www.linkedin.com/in/santiago-villalba-8711832a0/'
     }
   ];
 
@@ -145,23 +147,37 @@ export default function AboutUs() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {team.map((member, index) => (
-              <div key={index} className="text-center">
-                <img
-                  src={member.image}
-                  alt={member.name}
-                  className="w-32 h-32 rounded-full mx-auto mb-4 object-cover"
-                />
-                <h3 className="text-xl font-semibold text-gray-900 mb-1">
+              <div key={index} className="text-center bg-white rounded-xl p-6 shadow-sm hover:shadow-lg transition-shadow">
+                <div className="flex justify-center mb-6">
+                  <img
+                    src={member.image}
+                    alt={member.name}
+                    className="w-32 h-32 rounded-full object-cover border-4 border-gray-100"
+                  />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   {member.name}
                 </h3>
-                <p className="text-blue-600 font-medium mb-3">
+                <p className="text-blue-600 font-medium mb-4 text-sm uppercase tracking-wide">
                   {member.role}
                 </p>
-                <p className="text-gray-600">
+                <p className="text-gray-600 text-sm leading-relaxed mb-6 min-h-[120px] flex items-center">
                   {member.description}
                 </p>
+                <div className="flex justify-center">
+                  <a
+                    href={member.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl"
+                  >
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.338 16.338H13.67V12.16c0-.995-.017-2.277-1.387-2.277-1.39 0-1.601 1.086-1.601 2.207v4.248H8.014v-8.59h2.559v1.174h.037c.356-.675 1.227-1.387 2.526-1.387 2.703 0 3.203 1.778 3.203 4.092v4.711zM5.005 6.575a1.548 1.548 0 11-.003-3.096 1.548 1.548 0 01.003 3.096zm-1.337 9.763H6.34v-8.59H3.667v8.59zM17.668 1H2.328C1.595 1 1 1.581 1 2.298v15.403C1 18.418 1.595 19 2.328 19h15.34c.734 0 1.332-.582 1.332-1.299V2.298C19 1.581 18.402 1 17.668 1z" clipRule="evenodd" />
+                    </svg>
+                  </a>
+                </div>
               </div>
             ))}
           </div>
@@ -210,7 +226,7 @@ export default function AboutUs() {
               Contactanos
             </a>
             <a
-              href="/ayuda"
+              href="/help"
               className="border border-blue-600 text-blue-600 px-8 py-3 rounded-lg hover:bg-blue-50 transition-colors"
             >
               Centro de Ayuda

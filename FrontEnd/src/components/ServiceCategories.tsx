@@ -1,4 +1,3 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Wrench, 
@@ -34,7 +33,7 @@ export default function ServiceCategories() {
   const navigate = useNavigate();
 
   const handleCategoryClick = (categoryName: string) => {
-    navigate(`/servicios?category=${encodeURIComponent(categoryName)}`);
+    navigate(`/services?category=${encodeURIComponent(categoryName)}`);
   };
   return (
     <section className="py-16 bg-white">
@@ -49,7 +48,7 @@ export default function ServiceCategories() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-          {categories.map((category, index) => {
+          {categories.map((category) => {
             const Icon = category.icon;
             return (
               <div
