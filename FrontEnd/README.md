@@ -1,9 +1,10 @@
 # 🚀 ServiApp Frontend
 
-Frontend de la plataforma ServiApp desarrollado con React, TypeScript y Vite.
+Frontend de la plataforma ServiApp desarrollado con React, TypeScript y Vite. Una aplicación web completa para conectar usuarios con proveedores de servicios.
 
-🌐 **Aplicación en vivo:** https://serviapp-frontend.vercel.app/
+🌐 **Aplicación en vivo:** http://localhost:5174/ (desarrollo)
 📦 **Repositorio:** https://github.com/facupepi/serviapp-frontend
+🔗 **Backend API:** https://iycds2025api-production.up.railway.app/
 
 ## 👥 Desarrollado por
 
@@ -15,26 +16,53 @@ Frontend de la plataforma ServiApp desarrollado con React, TypeScript y Vite.
 
 ## 🛠️ Stack Tecnológico
 
-- **React 18.3.1** - Biblioteca de UI con hooks modernos
-- **TypeScript 5.5.3** - Tipado estático
-- **Vite 5.4.1** - Build tool y dev server
-- **Tailwind CSS 3.4.1** - Framework CSS utilitario
-- **React Router Dom 7.7.0** - Enrutamiento SPA
-- **Lucide React 0.344.0** - Iconos SVG
+- **React 18.3.1** - Biblioteca de UI con hooks modernos y Context API
+- **TypeScript 5.5.3** - Tipado estático y desarrollo type-safe
+- **Vite 5.4.8** - Build tool y dev server ultrarrápido
+- **Tailwind CSS 3.4.1** - Framework CSS utilitario responsive
+- **React Router Dom 7.7.0** - Enrutamiento SPA con navegación programática
+- **Axios** - Cliente HTTP con interceptores para autenticación
+- **js-cookie** - Gestión segura de cookies para persistencia de sesión
+- **Lucide React 0.344.0** - Iconos SVG optimizados
+
+## 🏗️ Arquitectura de la Aplicación
+
+### Estructura del Proyecto
+```
+src/
+├── api/           # Configuración de API y endpoints
+├── components/    # Componentes reutilizables
+├── contexts/      # Context API para estado global
+├── pages/         # Páginas principales de la aplicación
+└── utils/         # Utilidades y helpers
+
+public/           # Archivos estáticos
+```
+
+### Características Principales
+- ✅ **Autenticación completa** - Registro, login, recuperación de contraseña
+- ✅ **Gestión de estado global** - Context API con persistencia en cookies
+- ✅ **Routing protegido** - Rutas públicas y privadas
+- ✅ **Interfaz responsive** - Diseño móvil y desktop
+- ✅ **Integración con backend** - API REST completa
+- ✅ **Manejo de errores** - Interceptores y validaciones
+- ✅ **Formularios dinámicos** - Todas las provincias argentinas
+- ✅ **Sistema de favoritos** - Persistencia local
+- ✅ **Dashboard unificado** - Panel de control para usuarios y proveedores
 
 ## 📦 Instalación y Configuración
 
 ### Prerrequisitos
 ```bash
-Node.js >= 16.0.0
-npm >= 8.0.0
+Node.js >= 18.0.0
+npm >= 9.0.0
 ```
 
 ### Instalación
 ```bash
 # Clonar repositorio
-git clone <repository-url>
-cd "Proyecto ServiApp/FrontEnd"
+git clone https://github.com/facupepi/serviapp-frontend.git
+cd serviapp-frontend
 
 # Instalar dependencias
 npm install
@@ -45,344 +73,239 @@ npm run dev
 
 ### Scripts Disponibles
 ```bash
-npm run dev      # Servidor de desarrollo (localhost:5173)
+npm run dev      # Servidor de desarrollo (localhost:5174)
 npm run build    # Build para producción
 npm run lint     # Linting con ESLint
 npm run preview  # Preview del build de producción
 ```
+## 🔐 Autenticación y Seguridad
 
-## 📁 Estructura del Proyecto
+### Sistema de Autenticación
+- **JWT Tokens** - Autenticación basada en tokens
+- **Cookies seguras** - Persistencia de sesión con js-cookie
+- **Interceptores Axios** - Manejo automático de tokens
+- **Protección de rutas** - Verificación de autenticación
+- **Roles de usuario** - Sistema de permisos básico
 
+### Credenciales de Prueba
+```bash
+Email: facujoel2018@gmail.com
+Password: facujoel2018A
 ```
-src/
-├── components/           # Componentes reutilizables
-│   ├── Header.tsx       # Navegación principal
-│   ├── Footer.tsx       # Pie de página
-│   ├── Hero.tsx         # Sección hero
-│   ├── ServiceCategories.tsx
-│   ├── FeaturedProviders.tsx
-│   └── HowItWorks.tsx
-├── contexts/            # Context API
-│   └── AuthContext.tsx  # Estado global de autenticación
-├── pages/              # Páginas de la aplicación
-│   ├── Dashboard.tsx   # Panel principal (role-based)
-│   ├── Login.tsx       # Inicio de sesión
-│   ├── Register.tsx    # Registro de usuarios
-│   ├── ServicesPage.tsx # Búsqueda y listado
-│   ├── ServiceDetail.tsx # Detalle y reserva
-│   ├── OfferService.tsx # Crear servicio (proveedores)
-│   ├── MyServices.tsx  # Gestión de servicios
-│   ├── FavoritesPage.tsx # Servicios favoritos
-│   ├── UserRequestsPage.tsx # Solicitudes del cliente
-│   ├── ProviderRequestsPage.tsx # Solicitudes del proveedor
-│   └── ...             # Páginas adicionales
-├── App.tsx             # Componente raíz
-├── main.tsx           # Punto de entrada
-└── index.css          # Estilos globales + Tailwind
+
+### Gestión de Estado de Autenticación
+```typescript
+// AuthContext.tsx - Estados principales
+const [user, setUser] = useState<User | null>(null);
+const [loading, setLoading] = useState(true);
+const [isAuthenticated] = useState(!!user);
+
+// Persistencia en cookies
+const token = tokenStorage.getToken();
+const userData = userStorage.getUser();
+```
+
+## 🌍 Integración con Backend
+
+### API Endpoints
+```typescript
+// Base URL
+const API_BASE = 'https://iycds2025api-production.up.railway.app';
+
+// Endpoints principales
+POST /api/user/register  # Registro de usuarios
+POST /api/user/login     # Inicio de sesión
+GET  /api/services       # Listado de servicios
+POST /api/services       # Crear servicio
+```
+
+### Configuración Axios
+```typescript
+// api/auth.ts
+const authAPI = axios.create({
+  baseURL: 'https://iycds2025api-production.up.railway.app',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Interceptores para manejo automático de tokens
+authAPI.interceptors.request.use((config) => {
+  const token = tokenStorage.getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+```
+
+## 📱 Páginas y Funcionalidades
+
+### Página Principal (Home)
+- Hero section con llamada a la acción
+- Categorías de servicios populares
+- Proveedores destacados
+- Cómo funciona la plataforma
+
+### Autenticación
+- **Login** - Autenticación con validación y límite de intentos
+- **Registro** - Formulario completo con todas las provincias argentinas
+- **Recuperación de contraseña** - Flujo completo de reset
+
+### Dashboard Unificado
+- **Estadísticas personalizadas** por tipo de usuario
+- **Gestión de servicios** (para proveedores)
+- **Solicitudes activas** (usuarios y proveedores)
+- **Servicios favoritos**
+- **Perfil y configuración**
+
+### Servicios
+- **Búsqueda avanzada** con filtros por categoría y ubicación
+- **Detalle de servicios** con información completa del proveedor
+- **Sistema de reservas** con selección de fecha y hora
+- **Reseñas y calificaciones**
+
+### Gestión para Proveedores
+- **Crear servicios** con disponibilidad y zonas de cobertura
+- **Gestionar solicitudes** - aceptar/rechazar reservas
+- **Mi perfil de proveedor** con estadísticas
+
+## 🎨 Diseño y UX
+
+### Principios de Diseño
+- **Mobile First** - Diseño responsivo desde mobile
+- **Accesibilidad** - Contraste adecuado y navegación por teclado
+- **Consistencia visual** - Sistema de diseño coherente
+- **Feedback inmediato** - Loading states y mensajes de confirmación
+
+### Componentes de UI
+```typescript
+// Ejemplos de componentes reutilizables
+<StatCard />        # Tarjetas de estadísticas
+<ServiceCard />     # Tarjetas de servicios
+<LoadingSpinner />  # Indicadores de carga
+<Alert />           # Mensajes de notificación
 ```
 
 ## 🔧 Configuración de Desarrollo
 
-### ESLint
-```javascript
-// eslint.config.js
-export default tseslint.config({
-  extends: [js.configs.recommended, ...tseslint.configs.recommended],
-  files: ['**/*.{ts,tsx}'],
-  ignores: ['dist'],
-  // ...configuración personalizada
-})
+### Variables de Entorno
+```bash
+# Para desarrollo local
+VITE_API_URL=https://iycds2025api-production.up.railway.app
 ```
 
-### Tailwind CSS
-```javascript
-// tailwind.config.js
-export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-  theme: {
-    extend: {
-      colors: {
-        primary: '#3B82F6',
-        // ...colores personalizados
-      }
-    },
-  },
-  plugins: [],
-}
-```
-
-### TypeScript
-```json
-// tsconfig.json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "jsx": "react-jsx"
-  }
-}
-```
-
-## 🎯 Arquitectura y Patrones
-
-### Context API para Estado Global
+### Configuración de Cookies
 ```typescript
-// AuthContext.tsx
-interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{success: boolean}>;
-  // ...más métodos
-}
-```
-
-### Tipado con TypeScript
-```typescript
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  isProvider?: boolean;
-  // ...más propiedades
-}
-
-interface Service {
-  id: string;
-  title: string;
-  providerId: string;
-  // ...más propiedades
-}
-```
-
-### Componentes Funcionales con Hooks
-```typescript
-export default function Dashboard() {
-  const { user, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  
-  // ...lógica del componente
-}
-```
-
-## 🔒 Seguridad y Validación
-
-### Protección de Rutas
-```typescript
-// Verificación en cada página protegida
-if (!isAuthenticated || !user) {
-  navigate('/login');
-  return null;
-}
-
-// Verificación de roles
-if (!user.isProvider) {
-  navigate('/dashboard');
-  return null;
-}
-```
-
-### Validación de Formularios
-```typescript
-const validateForm = () => {
-  const newErrors: Record<string, string> = {};
-  
-  if (!email.trim()) {
-    newErrors.email = 'El email es requerido';
-  } else if (!/\S+@\S+\.\S+/.test(email)) {
-    newErrors.email = 'El email no es válido';
-  }
-  
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
+// utils/storage.ts
+const DEV_COOKIE_CONFIG = {
+  expires: 7,
+  secure: false,      // HTTP permitido en desarrollo
+  sameSite: 'lax',    # Más permisivo para desarrollo
+  path: '/',
 };
 ```
 
-### Limitación de Intentos de Login
+## 🐛 Debugging y Troubleshooting
+
+### Logs de Desarrollo
+La aplicación incluye logging extensivo para debugging:
+
 ```typescript
-// En AuthContext
-const [loginAttempts, setLoginAttempts] = useState(0);
-const [isBlocked, setIsBlocked] = useState(false);
-
-const login = async (email: string, password: string) => {
-  if (isBlocked) {
-    return { success: false, error: 'Cuenta bloqueada' };
-  }
-  
-  // ...lógica de login
-  
-  if (!success) {
-    const newAttempts = loginAttempts + 1;
-    setLoginAttempts(newAttempts);
-    
-    if (newAttempts >= 5) {
-      setIsBlocked(true);
-      setTimeout(() => {
-        setIsBlocked(false);
-        setLoginAttempts(0);
-      }, 10 * 60 * 1000); // 10 minutos
-    }
-  }
-};
+// Logs de autenticación
+🔄 Inicializando AuthContext
+✅ Usuario restaurado desde storage
+🔐 Iniciando proceso de login
+💾 Guardando token en cookies
 ```
 
-## 📱 Responsive Design
+### Problemas Comunes y Soluciones
 
-### Breakpoints de Tailwind
-```css
-/* Mobile First */
-.container {
-  @apply px-4;              /* Base (mobile) */
-  @apply sm:px-6;           /* ≥ 640px */
-  @apply lg:px-8;           /* ≥ 1024px */
-}
+1. **Cookie no persiste al recargar**
+   - Verificar configuración `sameSite` y `secure`
+   - Confirmar que `path: '/'` está configurado
 
-/* Grid responsivo */
-.services-grid {
-  @apply grid grid-cols-1;  /* Mobile: 1 columna */
-  @apply md:grid-cols-2;    /* Tablet: 2 columnas */
-  @apply lg:grid-cols-3;    /* Desktop: 3 columnas */
-}
-```
+2. **Error 400 en login/registro**
+   - Verificar formato de datos enviados
+   - Confirmar headers `Content-Type: application/json`
 
-## 🎨 Sistema de Diseño
+3. **Redirección inesperada al login**
+   - Verificar estado `loading` en componentes protegidos
+   - Confirmar que `isAuthenticated` se evalúa después de la carga
 
-### Colores
+### Herramientas de Debug
 ```typescript
-// Paleta principal
-const colors = {
-  primary: {
-    50: '#eff6ff',
-    500: '#3b82f6',
-    600: '#2563eb',
-    700: '#1d4ed8',
-  },
-  success: '#10b981',
-  warning: '#f59e0b',
-  error: '#ef4444',
-}
-```
-
-### Componentes Reutilizables
-```typescript
-// Ejemplo: StatCard
-interface StatCardProps {
-  icon: React.ReactNode;
-  title: string;
-  value: string | number;
-  color: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ icon, title, value, color }) => (
-  <div className="bg-white rounded-lg shadow-md p-6">
-    <div className="flex items-center">
-      <div className={`p-3 rounded-lg ${color}`}>
-        {icon}
-      </div>
-      <div className="ml-4">
-        <p className="text-sm font-medium text-gray-600">{title}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-      </div>
-    </div>
-  </div>
-);
-```
-
-## 🚀 Optimización y Performance
-
-### Lazy Loading
-```typescript
-// Para rutas
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-
-// Para imágenes
-<img 
-  src={service.image} 
-  alt={service.title}
-  loading="lazy"
-  className="w-full h-48 object-cover"
-/>
-```
-
-### Memoización
-```typescript
-// useMemo para cálculos costosos
-const filteredServices = useMemo(() => {
-  return services.filter(service => 
-    service.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-}, [services, searchQuery]);
-
-// useCallback para funciones
-const handleSearch = useCallback((query: string) => {
-  setSearchQuery(query);
-}, []);
-```
-
-## 🧪 Testing (Configuración Futura)
-
-### Jest + React Testing Library
-```javascript
-// Ejemplo de test
-describe('Login Component', () => {
-  test('renders login form', () => {
-    render(<Login />);
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-  });
+// Debug en consola del navegador
+console.log('🔍 Estado de autenticación:', {
+  loading,
+  isAuthenticated,
+  user: user ? { id: user.id, email: user.email } : null,
+  tokenExists: document.cookie.includes('authToken')
 });
 ```
 
-## 🌐 Deployment
+## 📊 Estado Actual del Proyecto
 
-### Build para Producción
-```bash
-npm run build
-```
+### ✅ Completado
+- [x] Configuración inicial de React + TypeScript + Vite
+- [x] Sistema de autenticación completo con backend
+- [x] Gestión de estado global con Context API
+- [x] Persistencia de sesión con cookies seguras
+- [x] Todas las páginas principales implementadas
+- [x] Formularios con validación completa
+- [x] Sistema de rutas protegidas
+- [x] Integración completa con API backend
+- [x] Manejo de errores y estados de carga
+- [x] Diseño responsive con Tailwind CSS
+- [x] Debugging y logging para desarrollo
 
-### Variables de Entorno
-```bash
-# .env
-VITE_API_URL=https://api.serviapp.com
-VITE_APP_NAME=ServiApp
-```
+### 🔄 En Desarrollo
+- [ ] Tests unitarios con Jest + Testing Library
+- [ ] Optimización de performance
+- [ ] PWA capabilities
+- [ ] Notificaciones push
 
-### Configuración Vercel
-```json
-// vercel.json
-{
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
-```
+### 🎯 Próximas Mejoras
+- [ ] Sistema de chat en tiempo real
+- [ ] Integración con pasarelas de pago
+- [ ] Geolocalización avanzada
+- [ ] Sistema de notificaciones por email
 
-## 🐛 Debugging
+## 📝 Notas de Desarrollo
 
-### Herramientas de Desarrollo
-- **React Developer Tools** - Inspección de componentes
-- **Redux DevTools** - Estado de la aplicación (si se implementa)
-- **Lighthouse** - Auditoría de performance
+### Patrones Implementados
+- **Context API** para estado global
+- **Custom Hooks** para lógica reutilizable
+- **Compound Components** para componentes complejos
+- **Error Boundaries** para manejo de errores
+- **Loading States** para mejor UX
 
-### Logging
-```typescript
-// En desarrollo
-if (import.meta.env.DEV) {
-  console.log('Debug info:', data);
-}
-```
+### Mejores Prácticas
+- Tipado estricto con TypeScript
+- Componentes funcionales con hooks
+- Separación de responsabilidades
+- Código limpio y documentado
+- Manejo consistente de errores
 
-## 🔧 Troubleshooting
+---
 
-### Problemas Comunes
+## 🤝 Contribución
 
-1. **Error de CORS**
-   ```typescript
-   // Configurar proxy en vite.config.ts
-   export default defineConfig({
-     server: {
+Para contribuir al proyecto:
+
+1. Fork del repositorio
+2. Crear una rama feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit de cambios (`git commit -m 'Agregar nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Crear Pull Request
+
+## 📄 Licencia
+
+Este proyecto es parte del curso de Ingeniería y Calidad de Software de la UTN-FRSF.
+
+---
+
+**Desarrollado con ❤️ por el equipo de ServiApp**
        proxy: {
          '/api': 'http://localhost:3000'
        }

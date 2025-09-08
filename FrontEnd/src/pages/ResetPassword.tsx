@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
+  const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const token = searchParams.get('token');
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,7 +18,9 @@ export default function ResetPassword() {
   const { resetPassword } = useAuth();
 
   useEffect(() => {
+    console.log('🔑 ResetPassword montado con token:', token || 'NO TOKEN');
     if (!token) {
+      console.error('❌ No se recibió token, redirigiendo a login');
       navigate('/login');
     }
   }, [token, navigate]);
@@ -32,6 +33,8 @@ export default function ResetPassword() {
     } else {
       if (password.length < 8) {
         newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
+      } else if (password.length > 16) {
+        newErrors.password = 'La contraseña no puede tener más de 16 caracteres';
       } else if (!/[A-Z]/.test(password)) {
         newErrors.password = 'La contraseña debe tener al menos una mayúscula';
       } else if (!/[0-9]/.test(password)) {
@@ -59,26 +62,27 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
+      console.log('🔒 Iniciando reset de contraseña con token:', token.substring(0, 20) + '...');
+      
       const result = await resetPassword(token, password, confirmPassword);
+      
       if (result.success) {
+        console.log('✅ Contraseña restablecida exitosamente:', result.message);
         setSuccess(true);
+        // Redirigir a login después de 3 segundos
         setTimeout(() => {
           navigate('/login');
-        }, 2000);
+        }, 3000);
       } else {
+        console.error('❌ Error al restablecer contraseña:', result.error);
         setErrors({ submit: result.error || 'Error al restablecer la contraseña' });
       }
     } catch (error) {
+      console.error('Error inesperado en reset password:', error);
       setErrors({ submit: 'Error del servidor. Inténtalo de nuevo.' });
     } finally {
       setLoading(false);
     }
-
-    // Simular actualización de contraseña
-    setTimeout(() => {
-      setSuccess(true);
-      setLoading(false);
-    }, 1000);
   };
 
   if (!token) {
@@ -93,7 +97,7 @@ export default function ResetPassword() {
               El enlace de recuperación no es válido o ha expirado. Por favor, solicita uno nuevo.
             </p>
             <button
-              onClick={() => navigate('/recuperar-password')}
+              onClick={() => navigate('/forgot-password')}
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
             >
               Solicitar nuevo enlace
@@ -142,6 +146,17 @@ export default function ResetPassword() {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        {/* Token Debug Info */}
+        <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm">
+          <h4 className="font-semibold mb-1">🔑 Token recibido:</h4>
+          <p className="font-mono break-all">
+            {token ? `${token.substring(0, 30)}${token.length > 30 ? '...' : ''}` : 'NO TOKEN'}
+          </p>
+          <p className="text-xs mt-1 text-blue-600">
+            Longitud: {token?.length || 0} caracteres
+          </p>
+        </div>
+
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Nueva Contraseña */}

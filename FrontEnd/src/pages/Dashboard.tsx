@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   User, 
@@ -67,12 +68,39 @@ const StatCard: React.FC<StatCardProps> = ({ icon, title, value, color }) => (
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, userRequests, providerRequests, favorites, services } = useAuth();
+  const { user, isAuthenticated, loading, userRequests, providerRequests, favorites, services } = useAuth();
 
-  // Redirigir si no está autenticado
-  if (!isAuthenticated || !user) {
-    navigate('/login');
-    return null;
+  // Verificar autenticación en useEffect para evitar problemas de renderizado
+  useEffect(() => {
+    // Solo redirigir si no está cargando y no está autenticado
+    if (!loading && (!isAuthenticated || !user)) {
+      console.log('� Redirigiendo a login - no autenticado');
+      navigate('/login');
+    }
+  }, [loading, isAuthenticated, user, navigate]);
+
+  // Debug: Verificar estado de autenticación solo cuando cambia
+  useEffect(() => {
+    console.log('�🔍 Estado de autenticación:', {
+      loading,
+      isAuthenticated,
+      user: user ? { id: user.id, email: user.email } : null,
+      tokenExists: document.cookie.includes('authToken')
+    });
+  }, [loading, isAuthenticated, user]);
+
+  // Mostrar loading mientras inicializa o mientras no está autenticado
+  if (loading || !isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">
+            {loading ? 'Cargando...' : 'Verificando autenticación...'}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Estadísticas unificadas del usuario

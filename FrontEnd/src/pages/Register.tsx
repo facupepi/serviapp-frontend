@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, User, Mail, Lock, Phone, MapPin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import Alert from '../components/Alert';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -17,33 +18,65 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const { register } = useAuth();
   const navigate = useNavigate();
 
   const provinces = [
-    'Buenos Aires', 'Córdoba', 'Santa Fe', 'Mendoza', 'Tucumán', 
-    'Entre Ríos', 'Salta', 'Misiones', 'Chaco', 'Corrientes'
+    'Buenos Aires',
+    'Catamarca',
+    'Chaco',
+    'Chubut',
+    'Ciudad Autónoma de Buenos Aires',
+    'Córdoba',
+    'Corrientes',
+    'Entre Ríos',
+    'Formosa',
+    'Jujuy',
+    'La Pampa',
+    'La Rioja',
+    'Mendoza',
+    'Misiones',
+    'Neuquén',
+    'Río Negro',
+    'Salta',
+    'San Juan',
+    'San Luis',
+    'Santa Cruz',
+    'Santa Fe',
+    'Santiago del Estero',
+    'Tierra del Fuego',
+    'Tucumán'
   ];
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
+    // Validar nombre (mínimo 2, máximo 100 caracteres)
     if (!formData.name.trim()) {
       newErrors.name = 'El nombre es obligatorio';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'El nombre debe tener al menos 2 caracteres';
+    } else if (formData.name.trim().length > 100) {
+      newErrors.name = 'El nombre no puede tener más de 100 caracteres';
     }
 
+    // Validar email
     if (!formData.email.trim()) {
       newErrors.email = 'El correo electrónico es obligatorio';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'El correo electrónico no es válido';
     }
 
+    // Validar contraseña (8-16 caracteres, una mayúscula, un número)
     if (!formData.password) {
       newErrors.password = 'La contraseña es obligatoria';
     } else {
       if (formData.password.length < 8) {
         newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
+      } else if (formData.password.length > 16) {
+        newErrors.password = 'La contraseña no puede tener más de 16 caracteres';
       } else if (!/[A-Z]/.test(formData.password)) {
         newErrors.password = 'La contraseña debe tener al menos una mayúscula';
       } else if (!/[0-9]/.test(formData.password)) {
@@ -51,18 +84,30 @@ export default function Register() {
       }
     }
 
+    // Validar confirmación de contraseña
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Debes confirmar la contraseña';
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Las contraseñas no coinciden';
     }
 
+    // Validar provincia (mínimo 2, máximo 100 caracteres)
     if (!formData.province) {
       newErrors.province = 'La provincia es obligatoria';
     }
 
+    // Validar localidad (mínimo 2, máximo 100 caracteres)
     if (!formData.locality.trim()) {
       newErrors.locality = 'La localidad es obligatoria';
+    } else if (formData.locality.trim().length < 2) {
+      newErrors.locality = 'La localidad debe tener al menos 2 caracteres';
+    } else if (formData.locality.trim().length > 100) {
+      newErrors.locality = 'La localidad no puede tener más de 100 caracteres';
+    }
+
+    // Validar teléfono (opcional, pero si se proporciona debe tener 10-20 caracteres)
+    if (formData.phone && (formData.phone.length < 10 || formData.phone.length > 20)) {
+      newErrors.phone = 'El teléfono debe tener entre 10 y 20 caracteres';
     }
 
     setErrors(newErrors);
@@ -77,18 +122,33 @@ export default function Register() {
     }
 
     setLoading(true);
+    setErrors({}); // Limpiar errores previos
+    setSuccessMessage('');
 
     try {
       const result = await register(formData);
       
       if (result.success) {
-        alert('¡Bienvenido a la plataforma! Tu cuenta ha sido creada exitosamente.');
-        navigate('/dashboard');
+        if (result.requiresLogin) {
+          // Registro exitoso pero requiere login por separado
+          setSuccessMessage(result.message || 'Cuenta creada exitosamente. Por favor, inicia sesión.');
+          setTimeout(() => {
+            navigate('/login');
+          }, 3000);
+        } else {
+          // Registro exitoso con autenticación automática
+          setSuccessMessage('¡Bienvenido a ServiApp! Tu cuenta ha sido creada exitosamente.');
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 2000);
+        }
       } else {
+        // Mostrar error específico del backend
         setErrors({ general: result.error || 'Error al registrarse. Intenta nuevamente.' });
       }
     } catch (error) {
-      setErrors({ general: 'Error al registrarse. Intenta nuevamente.' });
+      console.error('Error durante el registro:', error);
+      setErrors({ general: 'Error de conexión. Verifica tu internet e intenta nuevamente.' });
     } finally {
       setLoading(false);
     }
@@ -96,9 +156,34 @@ export default function Register() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+    // Limpiar errores del campo específico y error general
+    if (errors[field] || errors.general) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        delete newErrors.general;
+        return newErrors;
+      });
     }
+    // Limpiar mensaje de éxito si el usuario empieza a escribir
+    if (successMessage) {
+      setSuccessMessage('');
+    }
+  };
+
+  // Función para llenar datos del usuario
+  const fillTestData = () => {
+    setFormData({
+      name: 'Facundo Joel',
+      email: 'facujoel2018@gmail.com',
+      password: 'facujoel2018A',
+      confirmPassword: 'facujoel2018A',
+      phone: '+54 11 1234-5678',
+      province: 'Buenos Aires',
+      locality: 'Capital Federal'
+    });
+    setErrors({});
+    setSuccessMessage('');
   };
 
   return (
@@ -108,7 +193,7 @@ export default function Register() {
           Crear cuenta
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          ¿Ya tienes cuenta?{' '}
+          ¿Ya tienes una cuenta?{' '}
           <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
             Inicia sesión aquí
           </Link>
@@ -117,11 +202,36 @@ export default function Register() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {/* Herramientas de desarrollo */}
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={fillTestData}
+              className="w-full px-4 py-2 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 border border-green-300"
+            >
+              👤 Llenar datos del usuario
+            </button>
+          </div>
+          
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Mensaje de éxito */}
+            {successMessage && (
+              <Alert 
+                type="success" 
+                title="¡Registro exitoso!"
+                message={successMessage}
+                onClose={() => setSuccessMessage('')}
+              />
+            )}
+
+            {/* Mensaje de error general */}
             {errors.general && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
-                {errors.general}
-              </div>
+              <Alert 
+                type="error" 
+                title="Error en el registro"
+                message={errors.general}
+                onClose={() => setErrors(prev => ({ ...prev, general: '' }))}
+              />
             )}
 
             {/* Nombre */}
@@ -209,7 +319,7 @@ export default function Register() {
               </div>
               {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
               <p className="mt-1 text-xs text-gray-500">
-                Debe tener al menos 8 caracteres, una mayúscula y un número
+                Debe tener 8-16 caracteres, una mayúscula y un número
               </p>
             </div>
 
@@ -264,10 +374,13 @@ export default function Register() {
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
-                  className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className={`appearance-none block w-full pl-10 pr-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.phone ? 'border-red-300' : 'border-gray-300'
+                  }`}
                   placeholder="+54 11 1234-5678"
                 />
               </div>
+              {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
             </div>
 
             {/* Provincia */}
@@ -327,9 +440,19 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group relative w-full flex justify-center items-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creando cuenta...
+                  </>
+                ) : (
+                  'Crear cuenta'
+                )}
               </button>
             </div>
           </form>

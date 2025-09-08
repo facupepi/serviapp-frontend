@@ -39,10 +39,10 @@ export default function Header() {
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
-            <Link to="/servicios" className="text-gray-700 hover:text-blue-600 transition-colors">
+            <Link to="/services" className="text-gray-700 hover:text-blue-600 transition-colors">
               Servicios
             </Link>
-            <Link to="/ofrecer-servicio" className="text-gray-700 hover:text-blue-600 transition-colors">
+            <Link to="/offer-service" className="text-gray-700 hover:text-blue-600 transition-colors">
               Ofrecer Servicio
             </Link>
             {isAuthenticated ? (
@@ -57,15 +57,15 @@ export default function Header() {
                     <Link to="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                       Mi Dashboard
                     </Link>
-                    <Link to="/favoritos" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <Link to="/favorites" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                       <Heart className="h-4 w-4 mr-2" />
                       Mis Favoritos
                     </Link>
-                    <Link to="/mis-solicitudes" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <Link to="/my-requests" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                       <Clock className="h-4 w-4 mr-2" />
                       Mis Solicitudes
                     </Link>
-                    <Link to="/solicitudes-recibidas" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <Link to="/received-requests" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Solicitudes Recibidas
                     </Link>
@@ -83,7 +83,7 @@ export default function Header() {
                 <Link to="/login" className="text-gray-700 hover:text-blue-600 transition-colors">
                   Iniciar Sesión
                 </Link>
-                <Link to="/registro" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                <Link to="/register" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
                   Registrarse
                 </Link>
               </div>
@@ -114,10 +114,10 @@ export default function Header() {
         {/* Mobile menu */}
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-gray-200 space-y-4">
-            <Link to="/servicios" className="block text-gray-700 hover:text-blue-600 transition-colors">
+            <Link to="/services" className="block text-gray-700 hover:text-blue-600 transition-colors">
               Servicios
             </Link>
-            <Link to="/ofrecer-servicio" className="block text-gray-700 hover:text-blue-600 transition-colors">
+            <Link to="/offer-service" className="block text-gray-700 hover:text-blue-600 transition-colors">
               Ofrecer Servicio
             </Link>
             {isAuthenticated ? (
@@ -125,13 +125,13 @@ export default function Header() {
                 <Link to="/dashboard" className="block text-gray-700 hover:text-blue-600 transition-colors">
                   Mi Dashboard
                 </Link>
-                <Link to="/favoritos" className="block text-gray-700 hover:text-blue-600 transition-colors">
+                <Link to="/favorites" className="block text-gray-700 hover:text-blue-600 transition-colors">
                   Mis Favoritos
                 </Link>
-                <Link to="/mis-solicitudes" className="block text-gray-700 hover:text-blue-600 transition-colors">
+                <Link to="/my-requests" className="block text-gray-700 hover:text-blue-600 transition-colors">
                   Mis Solicitudes
                 </Link>
-                <Link to="/solicitudes-recibidas" className="block text-gray-700 hover:text-blue-600 transition-colors">
+                <Link to="/received-requests" className="block text-gray-700 hover:text-blue-600 transition-colors">
                   Solicitudes Recibidas
                 </Link>
                 <button 
@@ -146,7 +146,7 @@ export default function Header() {
                 <Link to="/login" className="block text-gray-700 hover:text-blue-600 transition-colors">
                   Iniciar Sesión
                 </Link>
-                <Link to="/registro" className="block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">
+                <Link to="/register" className="block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">
                   Registrarse
                 </Link>
               </>

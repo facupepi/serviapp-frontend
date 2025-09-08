@@ -19,6 +19,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import TestResetPassword from './pages/TestResetPassword';
 import AboutUs from './pages/AboutUs';
 import HowItWorksPage from './pages/HowItWorksPage';
 import TermsAndConditions from './pages/TermsAndConditions';
@@ -41,25 +42,26 @@ function App() {
                   <HowItWorks />
                 </>
               } />
-              <Route path="/servicios" element={<ServicesPage />} />
-              <Route path="/favoritos" element={<FavoritesPage />} />
-              <Route path="/mis-solicitudes" element={<UserRequestsPage />} />
-              <Route path="/solicitudes-recibidas" element={<ProviderRequestsPage />} />
-              <Route path="/servicio/:id" element={<ServiceDetailPage />} />
-              <Route path="/servicios/:id" element={<ServiceDetailPage />} />
-              <Route path="/proveedor/:id" element={<ProviderProfile />} />
-              <Route path="/ofrecer-servicio" element={<OfferService />} />
-              <Route path="/mis-servicios" element={<MyServices />} />
+              <Route path="/services" element={<ServicesPage />} />
+              <Route path="/favorites" element={<FavoritesPage />} />
+              <Route path="/my-requests" element={<UserRequestsPage />} />
+              <Route path="/received-requests" element={<ProviderRequestsPage />} />
+              <Route path="/service/:id" element={<ServiceDetailPage />} />
+              <Route path="/services/:id" element={<ServiceDetailPage />} />
+              <Route path="/provider/:id" element={<ProviderProfile />} />
+              <Route path="/offer-service" element={<OfferService />} />
+              <Route path="/my-services" element={<MyServices />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/registro" element={<Register />} />
-              <Route path="/recuperar-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/sobre-nosotros" element={<AboutUs />} />
-              <Route path="/como-funciona" element={<HowItWorksPage />} />
-              <Route path="/terminos-y-condiciones" element={<TermsAndConditions />} />
-              <Route path="/politica-de-privacidad" element={<PrivacyPolicy />} />
-              <Route path="/ayuda" element={<Help />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
+              <Route path="/test-reset-password" element={<TestResetPassword />} />
+              <Route path="/about-us" element={<AboutUs />} />
+              <Route path="/how-it-works" element={<HowItWorksPage />} />
+              <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/help" element={<Help />} />
             </Routes>
           </main>
           <Footer />

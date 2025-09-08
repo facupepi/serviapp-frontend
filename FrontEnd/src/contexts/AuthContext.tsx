@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authAPI, UserRegister as BackendUserRegister } from '../api/auth';
+import { tokenStorage, userStorage } from '../utils/storage';
 
 interface User {
   id: string;
@@ -77,9 +79,9 @@ interface AuthContextType {
   providerRequests: ServiceRequest[];
   favorites: string[];
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (userData: RegisterData) => Promise<{ success: boolean; error?: string }>;
-  forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
-  resetPassword: (token: string, password: string, confirmPassword: string) => Promise<{ success: boolean; error?: string }>;
+  register: (userData: RegisterData) => Promise<{ success: boolean; error?: string; message?: string; requiresLogin?: boolean }>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; error?: string; message?: string }>;
+  resetPassword: (token: string, password: string, confirmPassword: string) => Promise<{ success: boolean; error?: string; message?: string }>;
   logout: () => void;
   searchServices: (query: string, filters?: ServiceFilters) => Service[];
   requestService: (serviceId: string, date: string, time: string) => Promise<{ success: boolean; error?: string }>;
@@ -310,61 +312,6 @@ const mockProviders: User[] = [
   }
 ];
 
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'Ana Martínez',
-    email: 'ana@email.com',
-    phone: '+54 11 9876-5432',
-    province: 'Buenos Aires',
-    locality: 'Capital Federal',
-    avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop',
-    rating: 4.5,
-    reviewCount: 12,
-    completedJobs: 15,
-    services: ['Limpieza del hogar', 'Organización de espacios'],
-    description: 'Me especializo en limpieza y organización del hogar. Trabajo con productos ecológicos y tengo experiencia en espacios residenciales.',
-    verified: true,
-    createdAt: '2024-01-01'
-  },
-  {
-    id: '2',
-    name: 'Carlos Rodríguez',
-    email: 'carlos@email.com',
-    phone: '+54 11 5555-1234',
-    province: 'Buenos Aires',
-    locality: 'Capital Federal',
-    avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop',
-    rating: 4.8,
-    reviewCount: 15,
-    completedJobs: 45,
-    experience: '6 años',
-    services: ['Electricidad', 'Carpintería', 'Reparaciones generales'],
-    description: 'Electricista y carpintero con más de 6 años de experiencia. Realizo trabajos de calidad con garantía.',
-    certifications: ['Electricista Matriculado', 'Certificado de Carpintería'],
-    verified: true,
-    createdAt: '2023-06-15'
-  },
-  {
-    id: '3',
-    name: 'María González',
-    email: 'maria@email.com',
-    phone: '+54 351 444-5678',
-    province: 'Córdoba',
-    locality: 'Córdoba Capital',
-    avatar: 'https://images.pexels.com/photos/1181690/pexels-photo-1181690.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop',
-    rating: 4.9,
-    reviewCount: 23,
-    completedJobs: 67,
-    experience: '5 años',
-    services: ['Jardinería', 'Paisajismo', 'Mantenimiento de jardines'],
-    description: 'Especialista en jardinería y paisajismo. Creo espacios verdes únicos y sostenibles.',
-    certifications: ['Técnica en Jardinería', 'Curso de Paisajismo'],
-    verified: true,
-    createdAt: '2023-08-20'
-  }
-];
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -377,19 +324,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Verificar si hay un token guardado al cargar la app
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('userData');
+    const token = tokenStorage.getToken();
+    const userData = userStorage.getUser();
     const savedFavorites = localStorage.getItem('favorites');
     const attempts = localStorage.getItem('loginAttempts');
     const blockTime = localStorage.getItem('blockTime');
     
+    console.log('🔄 Inicializando AuthContext:', {
+      hasToken: !!token,
+      hasUserData: !!userData,
+      tokenLength: token?.length || 0
+    });
+    
     if (token && userData) {
+      setUser(userData);
+      console.log('✅ Usuario restaurado desde storage:', userData.email);
+    } else if (token && !userData) {
+      // Si hay token pero no datos del usuario, crear usuario básico
+      console.log('🔧 Token existe pero no hay datos de usuario, creando usuario básico...');
       try {
-        setUser(JSON.parse(userData));
+        // Decodificar el payload del JWT para obtener información básica
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const basicUser: User = {
+          id: payload.id?.toString() || 'unknown',
+          name: 'Usuario', // Nombre por defecto
+          email: 'usuario@correo.com', // Email por defecto
+          phone: '',
+          province: '',
+          locality: '',
+          avatar: undefined,
+          rating: 0,
+          reviewCount: 0,
+          completedJobs: 0,
+          services: [],
+          description: '',
+          verified: false,
+          createdAt: new Date().toISOString()
+        };
+        
+        setUser(basicUser);
+        userStorage.setUser(basicUser);
+        console.log('✅ Usuario básico creado desde token:', basicUser);
       } catch (error) {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userData');
+        console.error('❌ Error decodificando token:', error);
+        tokenStorage.removeToken();
       }
+    } else if (!token && userData) {
+      // Si no hay token pero hay datos, limpiar datos
+      console.log('⚠️ Hay datos de usuario pero no token, limpiando datos');
+      userStorage.removeUser();
+    } else {
+      console.log('ℹ️ No hay token ni datos de usuario guardados');
     }
     
     if (savedFavorites) {
@@ -417,6 +402,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     
+    console.log('✅ AuthContext inicialización completada, loading = false');
     setLoading(false);
   }, []);
 
@@ -426,45 +412,156 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: 'Demasiados intentos fallidos. Intenta nuevamente en 10 minutos.' };
       }
 
-      const foundUser = mockUsers.find(u => u.email === email);
+      console.log('🔐 Iniciando proceso de login...');
+
+      // Llamar a la API del backend
+      const response = await authAPI.login({ email, password });
       
-      if (foundUser && (password === 'Password123' || password === 'password123')) { // Mock password - acepta ambas
-        const token = 'mock-jwt-token-' + Date.now();
+      if (response.success && response.data) {
+        // Verificar que el token existe antes de guardarlo
+        if (response.data.token) {
+          tokenStorage.setToken(response.data.token);
+        } else {
+          console.warn('⚠️ No se recibió token del backend en login');
+        }
         
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('userData', JSON.stringify(foundUser));
+        // Guardar datos del usuario
+        if (response.data.user) {
+          userStorage.setUser(response.data.user);
+        } else {
+          console.warn('⚠️ No se recibieron datos del usuario del backend en login');
+        }
+        
         localStorage.removeItem('loginAttempts');
-        setUser(foundUser);
+        
+        // Si el backend envió datos del usuario, usarlos; si no, crear un usuario básico
+        let loggedUser: User;
+        
+        if (response.data.user) {
+          // Mapear datos del backend a nuestro formato local
+          loggedUser = {
+            id: response.data.user.id,
+            name: response.data.user.name,
+            email: response.data.user.email,
+            phone: response.data.user.phone,
+            province: response.data.user.province,
+            locality: response.data.user.locality,
+            avatar: undefined,
+            rating: 0,
+            reviewCount: 0,
+            completedJobs: 0,
+            services: [],
+            description: '',
+            verified: false,
+            createdAt: new Date().toISOString()
+          };
+        } else {
+          // Crear usuario básico si el backend no envió datos completos
+          console.log('🔧 Creando usuario básico desde token...');
+          try {
+            // Decodificar el payload del JWT para obtener información más precisa
+            const payload = JSON.parse(atob(response.data.token.split('.')[1]));
+            loggedUser = {
+              id: payload.id?.toString() || 'unknown',
+              name: email.split('@')[0], // Usar parte del email como nombre temporal
+              email: email,
+              phone: '',
+              province: '',
+              locality: '',
+              avatar: undefined,
+              rating: 0,
+              reviewCount: 0,
+              completedJobs: 0,
+              services: [],
+              description: '',
+              verified: false,
+              createdAt: new Date().toISOString()
+            };
+          } catch (error) {
+            console.error('❌ Error decodificando token:', error);
+            loggedUser = {
+              id: 'unknown',
+              name: email.split('@')[0],
+              email: email,
+              phone: '',
+              province: '',
+              locality: '',
+              avatar: undefined,
+              rating: 0,
+              reviewCount: 0,
+              completedJobs: 0,
+              services: [],
+              description: '',
+              verified: false,
+              createdAt: new Date().toISOString()
+            };
+          }
+        }
+
+        // SIEMPRE guardar los datos del usuario después del login exitoso
+        setUser(loggedUser);
+        userStorage.setUser(loggedUser);
         setLoginAttempts(0);
+        console.log('✅ Login exitoso, usuario guardado:', loggedUser.email);
         return { success: true };
+      } else {
+        // Manejo de intentos fallidos
+        const newAttempts = loginAttempts + 1;
+        setLoginAttempts(newAttempts);
+        localStorage.setItem('loginAttempts', newAttempts.toString());
+        
+        if (newAttempts >= 5) {
+          const blockTime = Date.now() + (10 * 60 * 1000); // 10 minutos
+          localStorage.setItem('blockTime', blockTime.toString());
+          setIsBlocked(true);
+          setTimeout(() => {
+            setIsBlocked(false);
+            setLoginAttempts(0);
+            localStorage.removeItem('blockTime');
+            localStorage.removeItem('loginAttempts');
+          }, 10 * 60 * 1000);
+          return { success: false, error: 'Demasiados intentos fallidos. Cuenta bloqueada por 10 minutos.' };
+        }
+        
+        return { success: false, error: response.error || 'Credenciales incorrectas' };
+      }
+    } catch (error: any) {
+      console.error('❌ Error completo en login:', error);
+      console.error('❌ Error tipo:', typeof error);
+      console.error('❌ Error message:', error?.message);
+      console.error('❌ Error response:', error?.response);
+      
+      // Si es un error de axios que ya fue procesado, usar el mensaje del authAPI
+      if (error?.response?.status) {
+        const status = error.response.status;
+        switch (status) {
+          case 401:
+            return { success: false, error: 'Email o contraseña incorrectos.' };
+          case 400:
+            return { success: false, error: 'Email o contraseña requeridos.' };
+          case 404:
+            return { success: false, error: 'Usuario no encontrado.' };
+          case 500:
+            return { success: false, error: 'Error del servidor. Intenta más tarde.' };
+          default:
+            return { success: false, error: `Error del servidor (${status})` };
+        }
       }
       
-      const newAttempts = loginAttempts + 1;
-      setLoginAttempts(newAttempts);
-      localStorage.setItem('loginAttempts', newAttempts.toString());
-      
-      if (newAttempts >= 5) {
-        const blockTime = Date.now() + (10 * 60 * 1000); // 10 minutos
-        localStorage.setItem('blockTime', blockTime.toString());
-        setIsBlocked(true);
-        setTimeout(() => {
-          setIsBlocked(false);
-          setLoginAttempts(0);
-          localStorage.removeItem('blockTime');
-          localStorage.removeItem('loginAttempts');
-        }, 10 * 60 * 1000);
-        return { success: false, error: 'Demasiados intentos fallidos. Cuenta bloqueada por 10 minutos.' };
+      // Error de conectividad real
+      if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network Error')) {
+        return { success: false, error: 'Error de conexión. Verifica tu internet e intenta nuevamente.' };
       }
       
-      return { success: false, error: 'Credenciales incorrectas' };
-    } catch (error) {
-      return { success: false, error: 'Error del servidor' };
+      // Error genérico
+      return { success: false, error: error?.message || 'Error inesperado al iniciar sesión.' };
     }
   };
 
-  const register = async (userData: RegisterData): Promise<{ success: boolean; error?: string }> => {
+  const register = async (userData: RegisterData): Promise<{ success: boolean; error?: string; message?: string; requiresLogin?: boolean }> => {
     try {
-      // Validaciones
+      
+      // Validaciones locales antes de enviar al servidor
       if (userData.password !== userData.confirmPassword) {
         return { success: false, error: 'Las contraseñas no coinciden' };
       }
@@ -481,69 +578,192 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: 'La contraseña debe contener al menos un número' };
       }
 
-      // Verificar email único
-      const existingUser = mockUsers.find(u => u.email === userData.email);
-      if (existingUser) {
-        return { success: false, error: 'Ese correo ya está registrado' };
+      // Validar campos requeridos según backend Go
+      if (!userData.name?.trim()) {
+        return { success: false, error: 'El nombre es obligatorio' };
+      }
+      if (userData.name.trim().length < 2 || userData.name.trim().length > 100) {
+        return { success: false, error: 'El nombre debe tener entre 2 y 100 caracteres' };
       }
 
-      // Crear nuevo usuario
-      const newUser: User = {
-        id: Date.now().toString(),
-        name: userData.name,
-        email: userData.email,
-        phone: userData.phone,
-        province: userData.province,
-        locality: userData.locality,
-        avatar: undefined,
-        rating: 0,
-        reviewCount: 0,
-        completedJobs: 0,
-        services: [],
-        description: '',
-        verified: false,
-        createdAt: new Date().toISOString()
+      if (!userData.email?.trim()) {
+        return { success: false, error: 'El email es obligatorio' };
+      }
+      // Validación de email más estricta
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(userData.email.trim())) {
+        return { success: false, error: 'El formato del email no es válido' };
+      }
+
+      // Validación de contraseña según backend (8-16 caracteres)
+      if (userData.password.length < 8 || userData.password.length > 16) {
+        return { success: false, error: 'La contraseña debe tener entre 8 y 16 caracteres' };
+      }
+
+      if (!userData.province?.trim()) {
+        return { success: false, error: 'La provincia es obligatoria' };
+      }
+      if (userData.province.trim().length < 2 || userData.province.trim().length > 100) {
+        return { success: false, error: 'La provincia debe tener entre 2 y 100 caracteres' };
+      }
+
+      if (!userData.locality?.trim()) {
+        return { success: false, error: 'La localidad es obligatoria' };
+      }
+      if (userData.locality.trim().length < 2 || userData.locality.trim().length > 100) {
+        return { success: false, error: 'La localidad debe tener entre 2 y 100 caracteres' };
+      }
+
+      // Validación de teléfono según backend (10-20 caracteres si se proporciona)
+      if (userData.phone && userData.phone.trim()) {
+        const phoneLength = userData.phone.trim().length;
+        if (phoneLength < 10 || phoneLength > 20) {
+          return { success: false, error: 'El teléfono debe tener entre 10 y 20 caracteres' };
+        }
+      }
+
+      // Preparar datos para el backend
+      const backendUserData: BackendUserRegister = {
+        name: userData.name.trim(),
+        email: userData.email.trim().toLowerCase(),
+        password: userData.password,
+        confirm_password: userData.confirmPassword,
+        locality: userData.locality.trim(),
+        province: userData.province.trim(),
       };
 
-      const token = 'mock-jwt-token-' + Date.now();
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('userData', JSON.stringify(newUser));
-      setUser(newUser);
+      // Solo agregar phone si tiene valor
+      if (userData.phone && userData.phone.trim()) {
+        backendUserData.phone = userData.phone.trim();
+      }
+
+      console.log('🔍 Datos que se enviarán al backend:', backendUserData);
+
+      // Llamar a la API del backend
+      const response = await authAPI.register(backendUserData);
       
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: 'Error del servidor' };
+      console.log('🎯 Respuesta completa del backend:', response);
+      console.log('🔑 Token en respuesta:', response.data?.token);
+      console.log('👤 Usuario en respuesta:', response.data?.user);
+
+      if (response.success && response.data) {
+        // Verificar que el token existe antes de guardarlo
+        if (response.data.token) {
+          tokenStorage.setToken(response.data.token);
+          console.log('✅ Token guardado exitosamente:', response.data.token);
+          
+          // Guardar datos del usuario
+          if (response.data.user) {
+            userStorage.setUser(response.data.user);
+            console.log('✅ Usuario guardado exitosamente:', response.data.user);
+          }
+          
+          // Mapear datos del backend a nuestro formato local
+          const newUser: User = {
+            id: response.data.user.id,
+            name: response.data.user.name,
+            email: response.data.user.email,
+            phone: response.data.user.phone,
+            province: response.data.user.province,
+            locality: response.data.user.locality,
+            avatar: undefined,
+            rating: 0,
+            reviewCount: 0,
+            completedJobs: 0,
+            services: [],
+            description: '',
+            verified: false,
+            createdAt: new Date().toISOString()
+          };
+
+          setUser(newUser);
+          return { success: true };
+          
+        } else {
+          console.warn('⚠️ No se recibió token del backend - registro exitoso pero sin autenticación automática');
+          
+          // El registro fue exitoso pero sin token
+          // El usuario tendrá que hacer login por separado
+          return { 
+            success: true, 
+            message: 'Registro exitoso. Por favor, inicia sesión con tu email y contraseña.',
+            requiresLogin: true 
+          };
+        }
+      } else {
+        return { success: false, error: response.error || 'Error al registrarse' };
+      }
+    } catch (error: any) {
+      console.error('Error en registro:', error);
+      return { success: false, error: 'Error de conexión. Verifica tu internet e intenta nuevamente.' };
     }
   };
 
-  const forgotPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+  const forgotPassword = async (email: string): Promise<{ success: boolean; error?: string; message?: string }> => {
     try {
-      // Simulación - siempre devuelve éxito por seguridad
-      console.log('Password reset requested for:', email);
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: 'Error del servidor' };
+      console.log('📧 Enviando solicitud de recuperación para:', email);
+      
+      const response = await authAPI.forgotPassword(email);
+      
+      if (response.success) {
+        console.log('✅ Solicitud de recuperación enviada exitosamente');
+        return {
+          success: true,
+          message: response.message
+        };
+      } else {
+        console.error('❌ Error en forgot password:', response.error);
+        return {
+          success: false,
+          error: response.error
+        };
+      }
+    } catch (error: any) {
+      console.error('Error en forgot password:', error);
+      return { success: false, error: 'Error de conexión. Verifica tu internet e intenta nuevamente.' };
     }
   };
 
-  const resetPassword = async (token: string, password: string, confirmPassword: string): Promise<{ success: boolean; error?: string }> => {
+  const resetPassword = async (token: string, password: string, confirmPassword: string): Promise<{ success: boolean; error?: string; message?: string }> => {
     try {
+      // Validaciones locales
       if (password !== confirmPassword) {
         return { success: false, error: 'Las contraseñas no coinciden' };
       }
 
-      if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
-        return { success: false, error: 'La contraseña no cumple con los requisitos de seguridad' };
+      if (password.length < 8 || password.length > 16) {
+        return { success: false, error: 'La contraseña debe tener entre 8 y 16 caracteres' };
       }
 
-      // Simulación de validación de token
-      if (!token || token === 'invalid') {
-        return { success: false, error: 'El enlace de recuperación no es válido o ha expirado. Por favor, solicitá uno nuevo.' };
+      if (!/[A-Z]/.test(password)) {
+        return { success: false, error: 'La contraseña debe contener al menos una mayúscula' };
       }
 
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: 'Error del servidor' };
+      if (!/[0-9]/.test(password)) {
+        return { success: false, error: 'La contraseña debe contener al menos un número' };
+      }
+
+      console.log('🔒 Iniciando reset de contraseña...');
+      
+      // Usar la nueva API que coincide con el backend
+      const response = await authAPI.resetPassword(token, password);
+      
+      if (response.success) {
+        console.log('✅ Contraseña restablecida exitosamente');
+        return {
+          success: true,
+          message: response.message
+        };
+      } else {
+        console.error('❌ Error al restablecer contraseña:', response.error);
+        return {
+          success: false,
+          error: response.error || 'Error al restablecer la contraseña'
+        };
+      }
+    } catch (error: any) {
+      console.error('Error en reset password:', error);
+      return { success: false, error: 'Error de conexión. Verifica tu internet e intenta nuevamente.' };
     }
   };
 
@@ -726,8 +946,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
+    userStorage.clearAll();
     setUser(null);
   };
 

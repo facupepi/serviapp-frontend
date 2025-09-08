@@ -19,7 +19,7 @@ export default function Login() {
       ...prev,
       [field]: value
     }));
-    // Limpiar error del campo
+    
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -45,170 +45,220 @@ export default function Login() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (isBlocked) {
-      setErrors({ form: 'Tu cuenta está bloqueada por 10 minutos debido a múltiples intentos fallidos' });
-      return;
-    }
-
-    if (!validateForm()) return;
-
-    setLoading(true);
+  // Función de login completamente aislada
+  const performLogin = async () => {    
     try {
-      const result = await login(formData.email, formData.password);
-      
-      if (result.success) {
-        navigate('/dashboard');
-      } else {
-        setErrors({ form: result.error || 'Error al iniciar sesión' });
+      if (loading) {
+        return;
       }
-    } catch (error) {
-      setErrors({ form: 'Error al iniciar sesión' });
+      
+      if (isBlocked) {
+        setErrors({ form: 'Cuenta bloqueada por múltiples intentos fallidos' });
+        return;
+      }
+
+      if (!validateForm()) {
+        return;
+      }
+
+      setLoading(true);
+      setErrors({});
+      
+      try {
+        const result = await login(formData.email, formData.password);
+        
+        if (result.success) {
+          // Usar setTimeout para evitar cualquier problema de timing
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 100);
+        } else {
+          setErrors({ form: result.error || 'Error al iniciar sesión' });
+        }
+      } catch (loginError) {
+        console.error('Error en llamada login:', loginError);
+        setErrors({ form: 'Error de comunicación con el servidor' });
+      }
+    } catch (outerError) {
+      console.error('Error externo en performLogin:', outerError);
+      setErrors({ form: 'Error inesperado del sistema' });
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Iniciar sesión
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          ¿No tienes cuenta?{' '}
-          <Link
-            to="/registro"
-            className="font-medium text-blue-600 hover:text-blue-500"
-          >
-            Regístrate aquí
-          </Link>
-        </p>
-      </div>
+  // Handler para el botón - NO debe hacer nada más que llamar performLogin
+  const handleLoginClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
+    
+    // Envolver en try-catch adicional para prevenir cualquier error no capturado
+    try {
+      performLogin();
+    } catch (error) {
+      console.error('Error en handleLoginClick:', error);
+      setErrors({ form: 'Error inesperado al procesar login' });
+      setLoading(false);
+    }
+  };
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {/* Usuarios de prueba */}
-          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-            <h3 className="text-sm font-medium text-blue-900 mb-2">Usuarios de prueba:</h3>
-            <div className="text-xs text-blue-700 space-y-1">
-              <p><strong>Cliente:</strong> ana@email.com / password123</p>
-              <p><strong>Proveedor:</strong> carlos@email.com / password123</p>
+  // Handler para Enter en inputs
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      e.nativeEvent.stopImmediatePropagation();
+      
+      // Envolver en try-catch adicional para prevenir cualquier error no capturado
+      try {
+        performLogin();
+      } catch (error) {
+        console.error('Error en handleKeyPress:', error);
+        setErrors({ form: 'Error inesperado al procesar login' });
+        setLoading(false);
+      }
+    }
+  };
+
+  // Función para cargar credenciales del usuario
+  const fillUserCredentials = () => {
+    setFormData({
+      email: 'facujoel2018@gmail.com',
+      password: 'facujoel2018A'
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Iniciar Sesión
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            ¿No tienes una cuenta?{' '}
+            <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
+              Regístrate aquí
+            </Link>
+          </p>
+        </div>
+
+        {/* Controles de Debug */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <h3 className="text-sm font-medium text-yellow-800 mb-3">🔧 Herramientas</h3>
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={fillUserCredentials}
+              className="w-full px-3 py-2 bg-green-200 text-green-800 rounded text-sm hover:bg-green-300"
+            >
+              👤 Cargar credenciales
+            </button>
+            <div className="text-xs text-yellow-700">
+              Intentos: {loginAttempts}/5 {isBlocked && '- BLOQUEADO'}
             </div>
           </div>
+        </div>
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
+        <div className="bg-white shadow-xl rounded-lg p-8">
+          <div className="space-y-6">
             {errors.form && (
-              <div className="flex items-center p-4 bg-red-50 border border-red-200 rounded-lg">
-                <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
-                <span className="text-red-700 text-sm">{errors.form}</span>
-              </div>
-            )}
-
-            {isBlocked && (
-              <div className="flex items-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <AlertCircle className="h-5 w-5 text-yellow-600 mr-2" />
-                <span className="text-yellow-700 text-sm">
-                  Cuenta bloqueada por 10 minutos debido a múltiples intentos fallidos
-                </span>
-              </div>
-            )}
-
-            {loginAttempts > 0 && !isBlocked && (
-              <div className="text-center text-sm text-gray-600">
-                Intentos restantes: {5 - loginAttempts}
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 flex items-start space-x-3">
+                <AlertCircle className="h-5 w-5 text-red-400 mt-0.5" />
+                <div className="text-sm text-red-700">{errors.form}</div>
               </div>
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email
               </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                   id="email"
-                  name="email"
                   type="email"
-                  autoComplete="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  onKeyPress={handleKeyPress}
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.email ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="tu@email.com"
+                  autoComplete="email"
                 />
               </div>
-              {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+              )}
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Contraseña
               </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                   id="password"
-                  name="password"
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
-                  className={`block w-full pl-10 pr-10 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  onKeyPress={handleKeyPress}
+                  className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.password ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="••••••••"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 hover:text-gray-600"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
-                  )}
+                  {showPassword ? <EyeOff /> : <Eye />}
                 </button>
               </div>
-              {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="text-sm">
-                <Link
-                  to="/recuperar-password"
-                  className="font-medium text-blue-600 hover:text-blue-500"
-                >
-                  ¿Olvidaste tu contraseña?
-                </Link>
-              </div>
+              <Link
+                to="/forgot-password"
+                className="text-sm text-blue-600 hover:text-blue-500"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
             </div>
 
-            <div>
-              <button
-                type="submit"
-                disabled={loading || isBlocked}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Iniciando sesión...
-                  </div>
-                ) : (
-                  'Iniciar sesión'
-                )}
-              </button>
-            </div>
-          </form>
+            <button
+              type="button"
+              onClick={handleLoginClick}
+              disabled={loading || isBlocked}
+              className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white ${
+                loading || isBlocked
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+              } transition duration-150 ease-in-out`}
+            >
+              {loading ? (
+                <div className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Iniciando sesión...
+                </div>
+              ) : isBlocked ? (
+                'Cuenta bloqueada'
+              ) : (
+                'Iniciar Sesión'
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

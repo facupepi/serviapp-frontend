@@ -11,6 +11,12 @@ export default function ForgotPassword() {
 
   const { forgotPassword } = useAuth();
 
+  // Debug: Llenar email de prueba
+  const fillTestEmail = () => {
+    setEmail('facujoel2018@gmail.com');
+    setError('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -30,11 +36,14 @@ export default function ForgotPassword() {
     try {
       const result = await forgotPassword(email);
       if (result.success) {
+        console.log('✅ Solicitud de recuperación exitosa:', result.message);
         setSubmitted(true);
       } else {
+        console.error('❌ Error en forgot password:', result.error);
         setError(result.error || 'Error al procesar la solicitud');
       }
     } catch (error) {
+      console.error('Error inesperado en forgot password:', error);
       setError('Error del servidor. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
@@ -117,6 +126,17 @@ export default function ForgotPassword() {
               </div>
             </div>
 
+            {/* Debug Button */}
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={fillTestEmail}
+                className="w-full flex justify-center py-2 px-4 border border-dashed border-orange-400 text-sm font-medium rounded-md text-orange-600 bg-orange-50 hover:bg-orange-100"
+              >
+                📧 Llenar email de prueba (DEBUG)
+              </button>
+            </div>
+
             <div>
               <button
                 type="submit"
@@ -127,6 +147,28 @@ export default function ForgotPassword() {
               </button>
             </div>
           </form>
+
+          {/* Enlaces adicionales */}
+          <div className="mt-6 space-y-3">
+            <div className="text-center">
+              <Link
+                to="/login"
+                className="text-sm text-blue-600 hover:text-blue-500"
+              >
+                ← Volver al inicio de sesión
+              </Link>
+            </div>
+            
+            {/* Debug Link - Solo para desarrollo */}
+            <div className="text-center pt-3 border-t border-gray-200">
+              <Link
+                to="/test-reset-password"
+                className="text-xs text-gray-500 hover:text-gray-700 bg-yellow-100 px-2 py-1 rounded"
+              >
+                🧪 Página de Test Reset Password (DEBUG)
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
