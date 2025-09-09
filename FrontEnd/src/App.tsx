@@ -22,7 +22,6 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-import TestResetPassword from './pages/TestResetPassword';
 import AboutUs from './pages/AboutUs';
 import HowItWorksPage from './pages/HowItWorksPage';
 import TermsAndConditions from './pages/TermsAndConditions';
@@ -61,7 +60,6 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password/:token" element={<ResetPassword />} />
-                <Route path="/test-reset-password" element={<TestResetPassword />} />
                 <Route path="/about-us" element={<AboutUs />} />
                 <Route path="/how-it-works" element={<HowItWorksPage />} />
                 <Route path="/terms-and-conditions" element={<TermsAndConditions />} />

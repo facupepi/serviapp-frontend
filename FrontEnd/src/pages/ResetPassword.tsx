@@ -19,9 +19,15 @@ export default function ResetPassword() {
 
   useEffect(() => {
     console.log('🔑 ResetPassword montado con token:', token || 'NO TOKEN');
-    if (!token) {
-      console.error('❌ No se recibió token, redirigiendo a login');
+    console.log('🔑 Token type:', typeof token);
+    console.log('🔑 Token length:', token?.length || 0);
+    console.log('🔑 Token empty?', !token || token.trim() === '');
+    
+    if (!token || token.trim() === '') {
+      console.error('❌ No se recibió token válido, redirigiendo a login');
       navigate('/login');
+    } else {
+      console.log('✅ Token válido recibido, continuando...');
     }
   }, [token, navigate]);
 
@@ -55,14 +61,24 @@ export default function ResetPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm() || !token) {
+    // Validación exhaustiva del token
+    if (!token || token.trim() === '') {
+      console.error('❌ Token vacío en handleSubmit:', { token, type: typeof token, length: token?.length });
+      setErrors({ submit: 'Token de recuperación inválido. Por favor, solicita un nuevo enlace.' });
+      return;
+    }
+    
+    if (!validateForm()) {
       return;
     }
 
     setLoading(true);
+    setErrors({}); // Limpiar errores previos
 
     try {
-      console.log('🔒 Iniciando reset de contraseña con token:', token.substring(0, 20) + '...');
+      console.log('🔒 Iniciando reset de contraseña...');
+      console.log('🎫 Token para enviar:', token.length > 20 ? token.substring(0, 20) + '...' : token);
+      console.log('🎫 Token length:', token.length);
       
       const result = await resetPassword(token, password, confirmPassword);
       

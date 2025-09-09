@@ -36,6 +36,15 @@ export interface AuthResponse {
   };
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
+}
+
 // Configuración de axios
 import axios from 'axios';
 import { tokenStorage } from '../utils/storage';
@@ -277,12 +286,32 @@ export const authAPI = {
     try {
       console.log('🔒 Enviando solicitud de reset de contraseña');
       console.log('📡 URL:', `${API_BASE_URL}/api/user/reset-password`);
-      console.log('🎫 Token:', token.substring(0, 20) + '...');
       
-      const response = await api.post('/api/user/reset-password', {
-        token,
+      // Validación de token antes de enviar
+      if (!token || token.trim() === '') {
+        console.error('❌ Token vacío o inválido:', { token, length: token?.length });
+        return {
+          success: false,
+          error: 'Token de recuperación inválido. Por favor, solicita un nuevo enlace de recuperación.'
+        };
+      }
+      
+      console.log('🎫 Token recibido:', token.length > 20 ? token.substring(0, 20) + '...' : token);
+      console.log('🎫 Token length:', token.length);
+      
+      // Payload que coincide exactamente con la estructura del backend
+      const payload = {
+        token: token.trim(),
         new_password: newPassword
+      };
+      
+      console.log('📦 Payload enviado:', { 
+        token: payload.token.length > 20 ? payload.token.substring(0, 20) + '...' : payload.token,
+        new_password: '[HIDDEN]',
+        token_length: payload.token.length 
       });
+      
+      const response = await api.post('/api/user/reset-password', payload);
       
       console.log('✅ Contraseña restablecida exitosamente');
       
