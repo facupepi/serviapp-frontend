@@ -158,16 +158,6 @@ export default function ForgotPassword() {
                 ← Volver al inicio de sesión
               </Link>
             </div>
-            
-            {/* Debug Link - Solo para desarrollo */}
-            <div className="text-center pt-3 border-t border-gray-200">
-              <Link
-                to="/test-reset-password"
-                className="text-xs text-gray-500 hover:text-gray-700 bg-yellow-100 px-2 py-1 rounded"
-              >
-                🧪 Página de Test Reset Password (DEBUG)
-              </Link>
-            </div>
           </div>
         </div>
       </div>

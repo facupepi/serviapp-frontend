@@ -14,6 +14,7 @@ export default function ResetPassword() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [tokenExpired, setTokenExpired] = useState(false);
 
   const { resetPassword } = useAuth();
 
@@ -28,6 +29,26 @@ export default function ResetPassword() {
       navigate('/login');
     } else {
       console.log('✅ Token válido recibido, continuando...');
+      // Verificar si el token parece ser JWT y si está expirado
+      if (token.includes('.')) {
+        try {
+          const parts = token.split('.');
+          if (parts.length === 3) {
+            // Es probablemente un JWT, intentar decodificar la parte del payload
+            const payload = JSON.parse(atob(parts[1]));
+            if (payload.exp) {
+              const now = Math.floor(Date.now() / 1000);
+              if (payload.exp < now) {
+                console.log('⏰ Token JWT detectado como expirado');
+                setTokenExpired(true);
+                return;
+              }
+            }
+          }
+        } catch (e) {
+          console.log('🔍 No se pudo decodificar como JWT, continuando...');
+        }
+      }
     }
   }, [token, navigate]);
 
@@ -91,7 +112,14 @@ export default function ResetPassword() {
         }, 3000);
       } else {
         console.error('❌ Error al restablecer contraseña:', result.error);
-        setErrors({ submit: result.error || 'Error al restablecer la contraseña' });
+        
+        // Detectar si es un error de token vencido
+        const errorMsg = result.error || '';
+        if (errorMsg.includes('expirado') || errorMsg.includes('expired') || errorMsg.includes('⏰')) {
+          setTokenExpired(true);
+        } else {
+          setErrors({ submit: result.error || 'Error al restablecer la contraseña' });
+        }
       }
     } catch (error) {
       console.error('Error inesperado en reset password:', error);
@@ -118,6 +146,42 @@ export default function ResetPassword() {
             >
               Solicitar nuevo enlace
             </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (tokenExpired) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+              <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Enlace expirado
+            </h3>
+            <p className="text-sm text-gray-600 mb-6">
+              El enlace de recuperación ha expirado por seguridad. Los enlaces de recuperación solo son válidos por un tiempo limitado.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => navigate('/forgot-password')}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Solicitar nuevo enlace
+              </button>
+              <button
+                onClick={() => navigate('/login')}
+                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Volver al login
+              </button>
+            </div>
           </div>
         </div>
       </div>

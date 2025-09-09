@@ -330,12 +330,34 @@ export const authAPI = {
         const status = error.response.status;
         const data = error.response.data;
         
+        console.log('🔍 Analizando error - Status:', status);
+        console.log('🔍 Analizando error - Data:', data);
+        console.log('🔍 Message from backend:', data?.message);
+        console.log('🔍 Error from backend:', data?.error);
+        
         switch (status) {
           case 400:
-            errorMessage = data?.message || 'Token o contraseña inválidos.';
+            // Analizar el mensaje específico para determinar si es token vencido
+            const backendMessage = data?.message || data?.error || '';
+            console.log('🔍 Backend message for analysis:', backendMessage);
+            
+            if (backendMessage.toLowerCase().includes('token') && 
+                (backendMessage.toLowerCase().includes('expired') || 
+                 backendMessage.toLowerCase().includes('vencido') ||
+                 backendMessage.toLowerCase().includes('expirado') ||
+                 backendMessage.toLowerCase().includes('invalid') ||
+                 backendMessage.toLowerCase().includes('inválido'))) {
+              errorMessage = '⏰ El enlace de recuperación ha expirado. Por favor, solicita un nuevo enlace de recuperación de contraseña.';
+            } else if (backendMessage.toLowerCase().includes('token')) {
+              errorMessage = '🔑 El enlace de recuperación no es válido. Por favor, solicita un nuevo enlace de recuperación de contraseña.';
+            } else if (backendMessage.toLowerCase().includes('password') || backendMessage.toLowerCase().includes('contraseña')) {
+              errorMessage = '🔒 La contraseña no cumple con los requisitos. Debe tener entre 8 y 16 caracteres, incluir al menos una mayúscula y un número.';
+            } else {
+              errorMessage = data?.message || data?.error || '❌ Token o contraseña inválidos. Verifica que el enlace no haya expirado y que la contraseña cumpla los requisitos.';
+            }
             break;
           case 404:
-            errorMessage = 'El enlace de recuperación no es válido o ha expirado.';
+            errorMessage = '🔗 El enlace de recuperación no es válido o ha expirado. Por favor, solicita un nuevo enlace.';
             break;
           case 422:
             errorMessage = 'La contraseña debe tener entre 8 y 16 caracteres.';
