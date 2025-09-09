@@ -337,23 +337,29 @@ export const authAPI = {
         
         switch (status) {
           case 400:
-            // Analizar el mensaje específico para determinar si es token vencido
+            // Analizar el mensaje específico para determinar el tipo de error
             const backendMessage = data?.message || data?.error || '';
             console.log('🔍 Backend message for analysis:', backendMessage);
             
-            if (backendMessage.toLowerCase().includes('token') && 
-                (backendMessage.toLowerCase().includes('expired') || 
-                 backendMessage.toLowerCase().includes('vencido') ||
-                 backendMessage.toLowerCase().includes('expirado') ||
-                 backendMessage.toLowerCase().includes('invalid') ||
-                 backendMessage.toLowerCase().includes('inválido'))) {
+            if (backendMessage.toLowerCase().includes('already been used') || 
+                backendMessage.toLowerCase().includes('ya fue utilizado') ||
+                backendMessage.toLowerCase().includes('ya se usó')) {
+              errorMessage = '🔄 Este enlace de recuperación ya fue utilizado. Cada enlace solo puede usarse una vez por seguridad. Por favor, solicita un nuevo enlace si necesitas cambiar tu contraseña nuevamente.';
+            } else if (backendMessage.toLowerCase().includes('token') && 
+                       (backendMessage.toLowerCase().includes('expired') || 
+                        backendMessage.toLowerCase().includes('vencido') ||
+                        backendMessage.toLowerCase().includes('expirado'))) {
               errorMessage = '⏰ El enlace de recuperación ha expirado. Por favor, solicita un nuevo enlace de recuperación de contraseña.';
-            } else if (backendMessage.toLowerCase().includes('token')) {
+            } else if (backendMessage.toLowerCase().includes('token') && 
+                       (backendMessage.toLowerCase().includes('invalid') ||
+                        backendMessage.toLowerCase().includes('inválido') ||
+                        backendMessage.toLowerCase().includes('not found') ||
+                        backendMessage.toLowerCase().includes('no encontrado'))) {
               errorMessage = '🔑 El enlace de recuperación no es válido. Por favor, solicita un nuevo enlace de recuperación de contraseña.';
             } else if (backendMessage.toLowerCase().includes('password') || backendMessage.toLowerCase().includes('contraseña')) {
               errorMessage = '🔒 La contraseña no cumple con los requisitos. Debe tener entre 8 y 16 caracteres, incluir al menos una mayúscula y un número.';
             } else {
-              errorMessage = data?.message || data?.error || '❌ Token o contraseña inválidos. Verifica que el enlace no haya expirado y que la contraseña cumpla los requisitos.';
+              errorMessage = data?.message || data?.error || '❌ Error al procesar la solicitud. Verifica que el enlace sea válido y que la contraseña cumpla los requisitos.';
             }
             break;
           case 404:
