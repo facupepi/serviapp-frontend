@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle, XCircle, Calendar, User, MessageSquare } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -198,9 +198,22 @@ export default function ProviderRequestsPage() {
   const { providerRequests, respondToRequest, isAuthenticated } = useAuth();
 
   // Redirigir si no está autenticado
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
+
+  // No renderizar nada si no está autenticado (mientras redirige)
   if (!isAuthenticated) {
-    navigate('/login');
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Verificando autenticación...</p>
+        </div>
+      </div>
+    );
   }
 
   // Todos los usuarios pueden recibir solicitudes ahora

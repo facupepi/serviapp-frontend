@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Clock, 
@@ -6,7 +6,6 @@ import {
   X,
   Save,
   ArrowLeft,
-  CheckCircle,
   AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,6 +20,7 @@ interface FormData {
   title: string;
   category: string;
   description: string;
+  price: number;
   image: string;
   zones: { province: string; locality: string; neighborhood?: string }[];
   availability: {
@@ -54,45 +54,226 @@ const ARGENTINA_PROVINCES = [
   }
 ];
 
-const SERVICE_CATEGORIES = [
-  'Plomería',
-  'Electricidad', 
-  'Limpieza',
-  'Jardinería',
-  'Pintura',
-  'Carpintería',
-  'Cerrajería',
-  'Tecnología',
-  'Belleza y Estética',
-  'Fitness y Bienestar',
-  'Clases Particulares',
-  'Cuidado de Mascotas',
-  'Otros Servicios'
-];
-
-const SAMPLE_IMAGES = [
-  'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&crop=center',
-  'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop&crop=center',
-  'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop&crop=center',
-  'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&h=300&fit=crop&crop=center'
-];
-
 export default function EditService() {
   const navigate = useNavigate();
   const { serviceId } = useParams();
-  const { isAuthenticated, user, updateService, services } = useAuth();
+  const { isAuthenticated, user, updateService, getServiceById, categories } = useAuth();
   const { addNotification } = useNotifications();
+  const [serviceData, setServiceData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Initialize all state hooks at the top level
+  const [formData, setFormData] = useState<FormData>(() => ({
+    title: '',
+    category: '',
+    description: '',
+    price: 0,
+    image: '',
+    zones: [],
+    availability: {
+      monday: { enabled: false, timeSlots: [] },
+      tuesday: { enabled: false, timeSlots: [] },
+      wednesday: { enabled: false, timeSlots: [] },
+      thursday: { enabled: false, timeSlots: [] },
+      friday: { enabled: false, timeSlots: [] },
+      saturday: { enabled: false, timeSlots: [] },
+      sunday: { enabled: false, timeSlots: [] },
+    }
+  }));
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
+  // Convertir datos del servicio al formato del formulario
+  const initializeFormData = useCallback((): FormData => {
+    if (!serviceData) {
+      // Return default form data if serviceData is not loaded yet
+      return {
+        title: '',
+        category: '',
+        description: '',
+        price: 0,
+        image: '',
+        zones: [],
+        availability: {
+          monday: { enabled: false, timeSlots: [] },
+          tuesday: { enabled: false, timeSlots: [] },
+          wednesday: { enabled: false, timeSlots: [] },
+          thursday: { enabled: false, timeSlots: [] },
+          friday: { enabled: false, timeSlots: [] },
+          saturday: { enabled: false, timeSlots: [] },
+          sunday: { enabled: false, timeSlots: [] },
+        }
+      };
+    }
+
+    const availabilityMap: FormData['availability'] = {
+      monday: { enabled: false, timeSlots: [] },
+      tuesday: { enabled: false, timeSlots: [] },
+      wednesday: { enabled: false, timeSlots: [] },
+      thursday: { enabled: false, timeSlots: [] },
+      friday: { enabled: false, timeSlots: [] },
+      saturday: { enabled: false, timeSlots: [] },
+      sunday: { enabled: false, timeSlots: [] },
+    };
+
+    // Convertir availability del servicio al formato del formulario
+    if (serviceData.availability) {
+      Object.entries(serviceData.availability).forEach(([day, schedule]: [string, any]) => {
+        const dayKey = day as keyof FormData['availability'];
+        if (availabilityMap[dayKey]) {
+          // Si el día tiene horarios definidos (start y end)
+          if (schedule && schedule.start && schedule.end) {
+            availabilityMap[dayKey] = {
+              enabled: true,
+              timeSlots: [{ start: schedule.start, end: schedule.end }]
+            };
+          }
+          // Si el día tiene available: false, mantenerlo deshabilitado
+          else if (schedule && schedule.available === false) {
+            availabilityMap[dayKey] = {
+              enabled: false,
+              timeSlots: []
+            };
+          }
+        }
+      });
+    }
+
+    const initialData = {
+      title: serviceData.title || '',
+      category: serviceData.category || '',
+      description: serviceData.description || '',
+      price: Number(serviceData.price) || 0,
+      image: serviceData.image_url || '',
+      zones: serviceData.zones || [],
+      availability: availabilityMap
+    };
+
+    console.log('🏠 Inicializando formulario con datos del servicio:', {
+      serviceData: serviceData,
+      initialData: initialData,
+      priceOriginal: serviceData.price,
+      priceConverted: Number(serviceData.price),
+      priceType: typeof initialData.price
+    });
+
+    return initialData;
+  }, [serviceData]);
+
+  // Transformar datos del formulario al formato que espera el backend
+  const transformDataForAPI = (data: FormData) => {
+    const transformed: any = {
+      title: data.title,
+      category: data.category,
+      description: data.description,
+      price: Number(data.price), // Asegurar que sea un número
+      image: data.image,
+      zones: data.zones,
+      availability: {}
+    };
+
+    // Transformar availability del formato del formulario al formato del backend
+    for (const day in data.availability) {
+      const dayData = data.availability[day as keyof typeof data.availability];
+      if (dayData.enabled && dayData.timeSlots.length > 0) {
+        // Día con horarios disponibles
+        transformed.availability[day] = {
+          start: dayData.timeSlots[0].start,
+          end: dayData.timeSlots[0].end
+        };
+      } else {
+        // Día no disponible
+        transformed.availability[day] = {
+          available: false
+        };
+      }
+    }
+
+    console.log('🔄 Transformando datos para API:', {
+      original: data,
+      transformed: transformed,
+      priceType: typeof transformed.price,
+      priceValue: transformed.price
+    });
+
+    return transformed;
+  };
+  
   // Redirigir si no está autenticado
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      navigate('/login');
+      return;
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  // Cargar el servicio a editar
+  useEffect(() => {
+    if (!isAuthenticated || !user || !serviceId) {
+      return;
+    }
+
+    const loadService = async () => {
+      setLoading(true);
+      try {
+        const result = await getServiceById(serviceId);
+        if (result.success && result.data) {
+          setServiceData(result.data);
+        } else {
+          addNotification({
+            type: 'error',
+            message: result.error || 'Error al cargar el servicio'
+          });
+          navigate('/my-services');
+        }
+      } catch (error) {
+        addNotification({
+          type: 'error',
+          message: 'Error al cargar el servicio'
+        });
+        navigate('/my-services');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadService();
+  }, [getServiceById, serviceId, addNotification, navigate, isAuthenticated, user]);
+
+  // Actualizar formData cuando serviceData se cargue
+  useEffect(() => {
+    if (serviceData) {
+      setFormData(initializeFormData());
+    }
+  }, [serviceData, initializeFormData]);
+
+  // No renderizar nada si no está autenticado (mientras redirige)
   if (!isAuthenticated || !user) {
-    navigate('/login');
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Verificando autenticación...</p>
+        </div>
+      </div>
+    );
   }
 
-  // Buscar el servicio a editar
-  const serviceToEdit = services.find(s => s.id === serviceId && s.providerId === user.id);
+  // Mostrar loading mientras se carga el servicio
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando servicio...</p>
+        </div>
+      </div>
+    );
+  }
 
-  if (!serviceToEdit) {
+  // Verificar si el servicio existe
+  if (!serviceData) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -111,44 +292,6 @@ export default function EditService() {
     );
   }
 
-  // Convertir datos del servicio al formato del formulario
-  const initializeFormData = (): FormData => {
-    const availabilityMap: FormData['availability'] = {
-      monday: { enabled: false, timeSlots: [] },
-      tuesday: { enabled: false, timeSlots: [] },
-      wednesday: { enabled: false, timeSlots: [] },
-      thursday: { enabled: false, timeSlots: [] },
-      friday: { enabled: false, timeSlots: [] },
-      saturday: { enabled: false, timeSlots: [] },
-      sunday: { enabled: false, timeSlots: [] },
-    };
-
-    // Convertir availability del servicio al formato del formulario
-    serviceToEdit.availability.forEach(avail => {
-      const dayKey = avail.day as keyof FormData['availability'];
-      if (availabilityMap[dayKey]) {
-        availabilityMap[dayKey] = {
-          enabled: avail.timeSlots.length > 0,
-          timeSlots: avail.timeSlots
-        };
-      }
-    });
-
-    return {
-      title: serviceToEdit.title,
-      category: serviceToEdit.category,
-      description: serviceToEdit.description,
-      image: serviceToEdit.image,
-      zones: serviceToEdit.zones,
-      availability: availabilityMap
-    };
-  };
-
-  const [formData, setFormData] = useState<FormData>(initializeFormData);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-
   // Validaciones
   const validateStep1 = () => {
     const newErrors: { [key: string]: string } = {};
@@ -161,6 +304,10 @@ export default function EditService() {
 
     if (!formData.category) {
       newErrors.category = 'La categoría es obligatoria';
+    }
+
+    if (!formData.price || formData.price <= 0) {
+      newErrors.price = 'El precio debe ser mayor a 0';
     }
 
     if (!formData.description.trim()) {
@@ -288,22 +435,12 @@ export default function EditService() {
     setIsSubmitting(true);
 
     try {
-      // Convertir formData al formato esperado por la API
-      const serviceData = {
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        zones: formData.zones.filter(zone => zone.province && zone.locality),
-        availability: Object.entries(formData.availability)
-          .filter(([_, day]) => day.enabled && day.timeSlots.length > 0)
-          .map(([dayName, day]) => ({
-            day: dayName,
-            timeSlots: day.timeSlots
-          })),
-        image: formData.image
-      };
+      // Usar la función de transformación para obtener el formato correcto
+      const transformedData = transformDataForAPI(formData);
+      
+      console.log('📋 Datos transformados para enviar al backend:', transformedData);
 
-      const result = await updateService(serviceId!, serviceData);
+      const result = await updateService(serviceId!, transformedData);
       
       if (result.success) {
         addNotification({
@@ -432,12 +569,43 @@ export default function EditService() {
                     }`}
                   >
                     <option value="">Selecciona una categoría</option>
-                    {SERVICE_CATEGORIES.map(category => (
+                    {categories.map(category => (
                       <option key={category} value={category}>{category}</option>
                     ))}
                   </select>
                   {errors.category && (
                     <p className="mt-1 text-sm text-red-600">{errors.category}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
+                    Precio *
+                  </label>
+                  <input
+                    type="number"
+                    id="price"
+                    value={formData.price === 0 ? '' : formData.price}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '') {
+                        setFormData(prev => ({ ...prev, price: 0 }));
+                      } else {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                          setFormData(prev => ({ ...prev, price: numValue }));
+                        }
+                      }
+                    }}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.price ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                  />
+                  {errors.price && (
+                    <p className="mt-1 text-sm text-red-600">{errors.price}</p>
                   )}
                 </div>
 
@@ -467,30 +635,18 @@ export default function EditService() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Imagen del servicio
+                    URL de imagen (opcional)
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {SAMPLE_IMAGES.map((image, index) => (
-                      <div
-                        key={index}
-                        className={`relative cursor-pointer rounded-lg border-2 overflow-hidden ${
-                          formData.image === image ? 'border-blue-500' : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        onClick={() => setFormData(prev => ({ ...prev, image }))}
-                      >
-                        <img
-                          src={image}
-                          alt={`Opción ${index + 1}`}
-                          className="w-full h-24 object-cover"
-                        />
-                        {formData.image === image && (
-                          <div className="absolute top-1 right-1">
-                            <CheckCircle className="h-5 w-5 text-blue-500 bg-white rounded-full" />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  <input
+                    type="url"
+                    value={formData.image}
+                    onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="https://ejemplo.com/imagen.jpg"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Agrega una imagen representativa de tu servicio
+                  </p>
                 </div>
               </div>
 

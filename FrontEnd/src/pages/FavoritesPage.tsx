@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, Star, MapPin, Trash2 } from 'lucide-react';
+import { Heart, MapPin, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function FavoritesPage() {
@@ -8,9 +8,22 @@ export default function FavoritesPage() {
   const { services, favorites, removeFromFavorites, isAuthenticated } = useAuth();
 
   // Redirigir si no está autenticado
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
+
+  // No renderizar nada si no está autenticado (mientras redirige)
   if (!isAuthenticated) {
-    navigate('/login');
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Verificando autenticación...</p>
+        </div>
+      </div>
+    );
   }
 
   // Obtener servicios favoritos
@@ -66,9 +79,12 @@ export default function FavoritesPage() {
               >
                 <div className="relative">
                   <img
-                    src={service.image}
+                    src={service.image_url}
                     alt={service.title}
                     className="w-full h-48 object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Sin+Imagen';
+                    }}
                   />
                   <button
                     onClick={(e) => handleRemoveFavorite(service.id, e)}
@@ -85,16 +101,6 @@ export default function FavoritesPage() {
                   </h3>
                   
                   <p className="text-gray-600 text-sm mb-2">{service.category}</p>
-                  
-                  <div className="flex items-center mb-2">
-                    <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                    <span className="ml-1 text-sm font-medium text-gray-900">
-                      {service.rating}
-                    </span>
-                    <span className="ml-1 text-sm text-gray-500">
-                      ({service.reviewCount} reseñas)
-                    </span>
-                  </div>
                   
                   <div className="flex items-center text-gray-500 text-sm mb-3">
                     <MapPin className="h-4 w-4 mr-1" />

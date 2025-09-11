@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Star, 
   MapPin, 
   Shield, 
-  Calendar,
   Clock,
   User,
   Heart,
@@ -12,19 +11,17 @@ import {
   Phone,
   Mail,
   Award,
-  MessageSquare,
-  ChevronLeft,
-  ChevronRight
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { Service } from '../types/api';
 
-export default function ServiceDetail() {
+const ServiceDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { 
     isAuthenticated, 
-    user, 
-    services, 
+    getServiceById,
     addToFavorites,
     removeFromFavorites,
     favorites, 
@@ -34,19 +31,61 @@ export default function ServiceDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
-  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [requestMessage, setRequestMessage] = useState('');
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [bookingStep, setBookingStep] = useState(1);
+  const [serviceData, setServiceData] = useState<Service | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Buscar el servicio por ID
-  const serviceData = services.find(s => s.id.toString() === id);
-  
-  if (!serviceData) {
+  useEffect(() => {
+    const loadService = async () => {
+      if (!id) {
+        setError('ID de servicio no válido');
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const result = await getServiceById(id);
+        
+        if (result.success && result.data) {
+          console.log('✅ Servicio cargado:', result.data);
+          setServiceData(result.data);
+          setError(null);
+        } else {
+          console.error('❌ Error cargando servicio:', result.error);
+          setError(result.error || 'Error al cargar el servicio');
+        }
+      } catch (error) {
+        console.error('❌ Error inesperado:', error);
+        setError('Error inesperado al cargar el servicio');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadService();
+  }, [id, getServiceById]);
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Servicio no encontrado</h2>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600">Cargando servicio...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !serviceData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            {error || 'Servicio no encontrado'}
+          </h2>
           <button
             onClick={() => navigate('/services')}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
@@ -58,305 +97,150 @@ export default function ServiceDetail() {
     );
   }
 
-  const isFavorite = favorites.includes(serviceData.id);
-  
-  // Mock reviews data for now since reviews are not implemented in AuthContext yet
-  const mockReviews = [
-    {
-      id: '1',
-      clientName: 'Pedro López',
-      rating: 5,
-      comment: 'Excelente servicio, muy profesional y puntual. Lo recomiendo ampliamente.',
-      date: '2024-01-10'
-    },
-    {
-      id: '2', 
-      clientName: 'Laura Silva',
-      rating: 4,
-      comment: 'Buen trabajo, aunque llegó un poco tarde. El resultado final fue muy bueno.',
-      date: '2024-01-05'
-    }
-  ];
-  
-  const serviceReviews = mockReviews;
+  const isFavorite = favorites.includes(serviceData.id.toString());
 
-  // Generar calendario
-  const generateCalendar = () => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
-
-    const days = [];
-    
-    // Días vacíos del mes anterior
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null);
-    }
-    
-    // Días del mes actual
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      const dateString = date.toISOString().split('T')[0];
-      
-      // Mock availability - some random available dates
-      const isAvailable = Math.random() > 0.5;
-      const isPast = date.getTime() < new Date().setHours(0, 0, 0, 0);
-      
-      days.push({
-        day,
-        date: dateString,
-        isAvailable: isAvailable && !isPast,
-        isPast
-      });
-    }
-
-    return days;
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star
+        key={i}
+        className={`h-5 w-5 ${
+          i < Math.floor(rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
+        }`}
+      />
+    ));
   };
 
-  const calendarDays = generateCalendar();
-  const monthNames = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
-
-  const handleDateSelect = (dateString: string) => {
-    setSelectedDate(dateString);
-    setSelectedTime('');
-  };
-
-  const handleTimeSelect = (time: string) => {
-    setSelectedTime(time);
-  };
-
-  const handleBookingRequest = async () => {
+  const handleRequestService = async () => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
-    
+
     if (!selectedDate || !selectedTime) {
       alert('Por favor selecciona fecha y hora');
       return;
     }
 
     try {
-      const result = await requestService(serviceData.id, selectedDate, selectedTime);
-      
+      const result = await requestService(serviceData.id.toString(), selectedDate, selectedTime);
       if (result.success) {
+        alert('Solicitud enviada exitosamente');
         setShowBookingModal(false);
-        setBookingStep(1);
         setSelectedDate('');
         setSelectedTime('');
         setRequestMessage('');
-        alert('¡Solicitud enviada exitosamente! El proveedor recibirá tu solicitud y te contactará pronto.');
       } else {
         alert(result.error || 'Error al enviar la solicitud');
       }
     } catch (error) {
-      alert('Error al enviar la solicitud');
+      alert('Error inesperado al enviar la solicitud');
     }
   };
 
-  // Mock available times for the selected date
-  const availableTimes = selectedDate ? ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'] : [];
-
-  const renderStars = (rating: number, size: 'sm' | 'md' = 'md') => {
-    const sizeClass = size === 'sm' ? 'h-4 w-4' : 'h-5 w-5';
-    return (
-      <div className="flex items-center">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`${sizeClass} ${
-              star <= rating
-                ? 'text-yellow-400 fill-current'
-                : 'text-gray-300'
-            }`}
-          />
-        ))}
-      </div>
-    );
+  const formatZones = (zones: any[]) => {
+    if (!zones || zones.length === 0) return 'Zona no especificada';
+    
+    // Agrupar por localidad
+    const groupedZones: { [key: string]: string[] } = {};
+    zones.forEach(zone => {
+      const locality = zone.locality || 'Localidad';
+      if (!groupedZones[locality]) {
+        groupedZones[locality] = [];
+      }
+      groupedZones[locality].push(zone.neighborhood || 'Barrio');
+    });
+    
+    // Formar el string de zonas
+    const zoneStrings = Object.entries(groupedZones).map(([locality, neighborhoods]) => {
+      if (neighborhoods.length <= 2) {
+        return `${neighborhoods.join(', ')} (${locality})`;
+      } else {
+        return `${neighborhoods.slice(0, 2).join(', ')} y ${neighborhoods.length - 2} más (${locality})`;
+      }
+    });
+    
+    return zoneStrings.join(' • ');
   };
 
-  const BookingModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-gray-900">
-              Solicitar Servicio: {serviceData.title}
-            </h3>
-            <button
-              onClick={() => setShowBookingModal(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              ×
-            </button>
-          </div>
+  const formatAvailability = (availability: any): string[] => {
+    if (!availability) return ['Disponibilidad: Consultar'];
+    
+    const days: string[] = [];
+    const dayNames = {
+      monday: 'Lunes',
+      tuesday: 'Martes', 
+      wednesday: 'Miércoles',
+      thursday: 'Jueves',
+      friday: 'Viernes',
+      saturday: 'Sábado',
+      sunday: 'Domingo'
+    };
+    
+    // Definir el orden correcto de los días (Lunes a Domingo)
+    const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    
+    dayOrder.forEach((day) => {
+      const schedule = availability[day];
+      if (schedule && schedule.start && schedule.end) {
+        const dayName = dayNames[day as keyof typeof dayNames];
+        days.push(`${dayName}: ${schedule.start} - ${schedule.end}`);
+      } else if (schedule && schedule.available === false) {
+        const dayName = dayNames[day as keyof typeof dayNames];
+        days.push(`${dayName}: No disponible`);
+      }
+    });
+    
+    return days.length > 0 ? days : ['Disponibilidad: Consultar'];
+  };
 
-          {/* Paso 1: Selección de fecha */}
-          {bookingStep === 1 && (
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Paso 1: Selecciona una fecha</h4>
-              
-              {/* Navegación del calendario */}
-              <div className="flex items-center justify-between mb-4">
-                <button
-                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-                  className="p-2 hover:bg-gray-100 rounded"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <h5 className="text-lg font-semibold">
-                  {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-                </h5>
-                <button
-                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-                  className="p-2 hover:bg-gray-100 rounded"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
+  const generateTimeSlots = () => {
+    if (!serviceData?.availability) return [];
+    
+    const timeSlots = [];
+    const selectedDateObj = selectedDate ? new Date(selectedDate) : null;
+    
+    if (!selectedDateObj) return [];
+    
+    // Obtener el día de la semana (0 = domingo, 1 = lunes, etc.)
+    const dayOfWeek = selectedDateObj.getDay();
+    const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayKey = dayKeys[dayOfWeek];
+    
+    const availability = serviceData.availability[dayKey];
+    
+    if (!availability || !availability.start || !availability.end) {
+      return [];
+    }
+    
+    // Generar slots de 1 hora entre start y end
+    const startTime = availability.start;
+    const endTime = availability.end;
+    
+    const [startHour] = startTime.split(':').map(Number);
+    const [endHour] = endTime.split(':').map(Number);
+    
+    let currentHour = startHour;
+    
+    while (currentHour < endHour) {
+      const timeSlot = `${currentHour.toString().padStart(2, '0')}:00`;
+      timeSlots.push(timeSlot);
+      currentHour++;
+    }
+    
+    return timeSlots;
+  };
 
-              {/* Calendario */}
-              <div className="grid grid-cols-7 gap-1 mb-4">
-                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(day => (
-                  <div key={day} className="p-2 text-center text-sm font-medium text-gray-600">
-                    {day}
-                  </div>
-                ))}
-                {calendarDays.map((day, index) => (
-                  <div key={index} className="aspect-square">
-                    {day && (
-                      <button
-                        onClick={() => day.isAvailable && handleDateSelect(day.date)}
-                        disabled={!day.isAvailable}
-                        className={`w-full h-full rounded text-sm ${
-                          selectedDate === day.date
-                            ? 'bg-blue-600 text-white'
-                            : day.isAvailable
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                            : day.isPast
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        }`}
-                      >
-                        {day.day}
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex justify-between">
-                <button
-                  onClick={() => setShowBookingModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => setBookingStep(2)}
-                  disabled={!selectedDate}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  Siguiente
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Paso 2: Selección de hora */}
-          {bookingStep === 2 && (
-            <div>
-              <h4 className="text-lg font-semibold mb-4">
-                Paso 2: Selecciona una hora - {selectedDate}
-              </h4>
-              
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                {availableTimes.map((time: string) => (
-                  <button
-                    key={time}
-                    onClick={() => handleTimeSelect(time)}
-                    className={`p-3 rounded-lg border text-center ${
-                      selectedTime === time
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300'
-                    }`}
-                  >
-                    {time}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex justify-between">
-                <button
-                  onClick={() => setBookingStep(1)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                >
-                  Anterior
-                </button>
-                <button
-                  onClick={() => setBookingStep(3)}
-                  disabled={!selectedTime}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  Siguiente
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Paso 3: Mensaje y confirmación */}
-          {bookingStep === 3 && (
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Paso 3: Confirma tu solicitud</h4>
-              
-              <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                <h5 className="font-semibold mb-2">Resumen de la solicitud:</h5>
-                <p><strong>Servicio:</strong> {serviceData.title}</p>
-                <p><strong>Proveedor:</strong> {serviceData.providerName}</p>
-                <p><strong>Fecha:</strong> {selectedDate}</p>
-                <p><strong>Hora:</strong> {selectedTime}</p>
-                <p><strong>Ubicación:</strong> {serviceData.zones[0]?.locality || 'No especificada'}</p>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mensaje adicional (opcional)
-                </label>
-                <textarea
-                  value={requestMessage}
-                  onChange={(e) => setRequestMessage(e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Describe detalles específicos sobre el servicio que necesitas..."
-                />
-              </div>
-
-              <div className="flex justify-between">
-                <button
-                  onClick={() => setBookingStep(2)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                >
-                  Anterior
-                </button>
-                <button
-                  onClick={handleBookingRequest}
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
-                >
-                  Confirmar Solicitud
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  const isDateAvailable = (date: string) => {
+    if (!serviceData?.availability || !date) return false;
+    
+    const dateObj = new Date(date);
+    const dayOfWeek = dateObj.getDay();
+    const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayKey = dayKeys[dayOfWeek];
+    
+    const availability = serviceData.availability[dayKey];
+    return availability && availability.start && availability.end;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -365,7 +249,7 @@ export default function ServiceDetail() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+            className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="h-5 w-5 mr-2" />
             Volver
@@ -374,69 +258,101 @@ export default function ServiceDetail() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Columna principal */}
-          <div className="lg:col-span-2">
-            {/* Imagen y título */}
-            <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-              <img
-                src={serviceData.image}
-                alt={serviceData.title}
-                className="w-full h-64 object-cover"
-              />
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                      {serviceData.title}
-                    </h1>
-                    <div className="flex items-center text-gray-600 mb-2">
-                      <User className="h-5 w-5 mr-2" />
-                      <span className="font-medium">{serviceData.providerName}</span>
-                      <Shield className="h-5 w-5 text-blue-600 ml-2" />
-                      <Award className="h-5 w-5 text-yellow-500 ml-2" />
-                    </div>
-                    <div className="flex items-center mb-2">
-                      {renderStars(serviceData.rating)}
-                      <span className="ml-2 text-gray-600">
-                        {serviceData.rating} ({serviceData.reviewCount} reseñas)
-                      </span>
-                    </div>
-                    <div className="flex items-center text-gray-600">
-                      <MapPin className="h-5 w-5 mr-2" />
-                      <span>{serviceData.zones[0]?.locality || 'Ubicación no especificada'}, {serviceData.zones[0]?.province || ''}</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => isFavorite ? removeFromFavorites(serviceData.id) : addToFavorites(serviceData.id)}
-                    className={`p-2 rounded-full ${
-                      isFavorite
-                        ? 'bg-red-100 text-red-600'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    <Heart className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
-                  </button>
-                </div>
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Service Images */}
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="aspect-w-16 aspect-h-9">
+                <img
+                  src={serviceData.image_url}
+                  alt={serviceData.title}
+                  className="w-full h-80 object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&h=400&fit=crop&crop=center';
+                  }}
+                />
               </div>
             </div>
 
-            {/* Tabs */}
-            <div className="bg-white rounded-lg shadow-md">
-              <div className="border-b border-gray-200">
-                <nav className="flex space-x-8 px-6">
+            {/* Service Info */}
+            <div className="bg-white rounded-xl shadow-sm p-8">
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    {serviceData.title}
+                  </h1>
+                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 mr-1" />
+                      {formatZones(serviceData.zones)}
+                    </div>
+                    <div className="flex items-center">
+                      <Shield className="h-4 w-4 mr-1" />
+                      Verificado
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => isFavorite 
+                    ? removeFromFavorites(serviceData.id.toString()) 
+                    : addToFavorites(serviceData.id.toString())
+                  }
+                  className={`p-2 rounded-full transition-colors ${
+                    isFavorite 
+                      ? 'text-red-500 bg-red-50 hover:bg-red-100' 
+                      : 'text-gray-400 bg-gray-50 hover:bg-gray-100'
+                  }`}
+                >
+                  <Heart className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
+                </button>
+              </div>
+
+              {/* Provider Info */}
+              <div className="flex items-center space-x-4 mb-8 p-4 bg-gray-50 rounded-lg">
+                <div className="h-12 w-12 bg-blue-600 rounded-full flex items-center justify-center">
+                  <User className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-medium">Proveedor Profesional</span>
+                    <Award className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="flex items-center mt-1">
+                    <div className="flex items-center mr-4">
+                      {renderStars(4.8)}
+                      <span className="text-sm text-gray-600 ml-2">
+                        4.8 (24 reseñas)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <button className="p-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
+                    <MessageSquare className="h-5 w-5" />
+                  </button>
+                  <button className="p-2 text-green-600 bg-green-50 rounded-lg hover:bg-green-100">
+                    <Phone className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Tabs */}
+              <div className="border-b border-gray-200 mb-6">
+                <nav className="-mb-px flex space-x-8">
                   {[
                     { id: 'overview', label: 'Descripción' },
-                    { id: 'reviews', label: 'Reseñas' },
-                    { id: 'contact', label: 'Contacto' }
+                    { id: 'availability', label: 'Disponibilidad' },
+                    { id: 'reviews', label: 'Reseñas' }
                   ].map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                      className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                         activeTab === tab.id
                           ? 'border-blue-500 text-blue-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                          : 'border-transparent text-gray-500 hover:text-gray-700'
                       }`}
                     >
                       {tab.label}
@@ -445,85 +361,159 @@ export default function ServiceDetail() {
                 </nav>
               </div>
 
-              <div className="p-6">
+              {/* Tab Content */}
+              <div className="space-y-6">
                 {activeTab === 'overview' && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">Descripción del servicio</h3>
-                    <p className="text-gray-700 mb-6">{serviceData.description}</p>
-                    
-                    <h4 className="text-md font-semibold mb-3">Categoría:</h4>
-                    <p className="mb-6">{serviceData.category}</p>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">
-                          {serviceData.rating}/5
-                        </div>
-                        <div className="text-sm text-gray-600">calificación promedio</div>
+                  <div className="space-y-4">
+                    <p className="text-gray-700 leading-relaxed">
+                      {serviceData.description}
+                    </p>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-3">Detalles del servicio</h4>
+                        <ul className="text-sm text-gray-600 space-y-2">
+                          <li className="flex justify-between">
+                            <span>• Categoría:</span>
+                            <span className="font-medium">{serviceData.category}</span>
+                          </li>
+                          <li className="flex justify-between">
+                            <span>• Estado:</span>
+                            <span className={`font-medium ${serviceData.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
+                              {serviceData.status === 'active' ? 'Activo' : 'Inactivo'}
+                            </span>
+                          </li>
+                          <li className="flex justify-between">
+                            <span>• Precio:</span>
+                            <span className="font-medium text-blue-600">
+                              ${serviceData.price.toLocaleString('es-AR')}
+                            </span>
+                          </li>
+                          <li className="flex justify-between">
+                            <span>• Servicio desde:</span>
+                            <span className="font-medium">
+                              {new Date(serviceData.created_at).toLocaleDateString('es-AR')}
+                            </span>
+                          </li>
+                          <li className="flex justify-between">
+                            <span>• Última actualización:</span>
+                            <span className="font-medium">
+                              {new Date(serviceData.updated_at).toLocaleDateString('es-AR')}
+                            </span>
+                          </li>
+                        </ul>
                       </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">
-                          {serviceData.reviewCount}
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-3">Zona de cobertura</h4>
+                        <div className="space-y-2">
+                          {serviceData.zones.map((zone: any, index: number) => (
+                            <div key={index} className="text-sm bg-gray-50 p-3 rounded-lg">
+                              <div className="font-medium text-gray-900">
+                                📍 {zone.neighborhood}
+                              </div>
+                              <div className="text-gray-600">
+                                {zone.locality}, {zone.province}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        <div className="text-sm text-gray-600">reseñas recibidas</div>
+                        <div className="mt-3 text-xs text-gray-500">
+                          Cobertura en {serviceData.zones.length} zona{serviceData.zones.length > 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'availability' && (
+                  <div className="space-y-6">
+                    <h4 className="font-medium text-gray-900">Horarios disponibles</h4>
+                    
+                    {/* Horarios detallados por día */}
+                    <div className="space-y-3">
+                      {formatAvailability(serviceData.availability).map((daySchedule, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <span className="font-medium text-gray-900">
+                            {daySchedule.split(':')[0]}
+                          </span>
+                          <span className="text-sm text-gray-600">
+                            {daySchedule.includes('No disponible') 
+                              ? 'Cerrado' 
+                              : daySchedule.split(': ')[1]
+                            }
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Vista visual de días disponibles */}
+                    <div className="space-y-4">
+                      <h5 className="font-medium text-gray-900">Vista semanal</h5>
+                      <div className="grid grid-cols-7 gap-2 text-center text-sm">
+                        {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day, index) => {
+                          const dayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+                          const schedule = serviceData.availability?.[day];
+                          const isAvailable = schedule && schedule.start && schedule.end;
+                          
+                          return (
+                            <div key={day} className="space-y-2">
+                              <div
+                                className={`p-3 rounded-lg ${
+                                  isAvailable
+                                    ? 'bg-green-50 text-green-700 border border-green-200'
+                                    : 'bg-gray-50 text-gray-400 border border-gray-200'
+                                }`}
+                              >
+                                {dayLabels[index]}
+                              </div>
+                              {isAvailable && (
+                                <div className="text-xs text-gray-600">
+                                  <div>{schedule.start}</div>
+                                  <div>-</div>
+                                  <div>{schedule.end}</div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
                 )}
 
                 {activeTab === 'reviews' && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">
-                      Reseñas ({serviceReviews.length})
-                    </h3>
-                    {serviceReviews.length > 0 ? (
-                      <div className="space-y-4">
-                        {serviceReviews.map((review) => (
-                          <div key={review.id} className="border-b border-gray-200 pb-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center">
-                                <div className="bg-gray-300 rounded-full h-10 w-10 flex items-center justify-center">
-                                  <User className="h-6 w-6 text-gray-600" />
-                                </div>
-                                <div className="ml-3">
-                                  <p className="font-medium">{review.clientName}</p>
-                                  <div className="flex items-center">
-                                    {renderStars(review.rating, 'sm')}
-                                    <span className="ml-2 text-sm text-gray-600">
-                                      {review.date}
-                                    </span>
-                                  </div>
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-gray-900">Reseñas de clientes</h4>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex items-center">
+                          {renderStars(4.8)}
+                        </div>
+                        <span className="text-sm font-medium">4.8/5</span>
+                        <span className="text-sm text-gray-500">(24 reseñas)</span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {/* Ejemplo de reseñas */}
+                      {[1, 2, 3].map((review) => (
+                        <div key={review} className="border-b border-gray-100 pb-4">
+                          <div className="flex items-start space-x-4">
+                            <div className="h-10 w-10 bg-gray-300 rounded-full"></div>
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <span className="font-medium">Cliente Satisfecho</span>
+                                <div className="flex items-center">
+                                  {renderStars(5)}
                                 </div>
                               </div>
+                              <p className="text-sm text-gray-600 mb-2">
+                                Excelente servicio, muy profesional y puntual. Lo recomiendo totalmente.
+                              </p>
+                              <span className="text-xs text-gray-400">Hace 1 semana</span>
                             </div>
-                            <p className="text-gray-700">{review.comment}</p>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-gray-500 text-center py-8">
-                        Este servicio aún no tiene reseñas.
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'contact' && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">Información de contacto</h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center">
-                        <Phone className="h-5 w-5 text-gray-600 mr-3" />
-                        <span>Contacto disponible después de solicitar el servicio</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Mail className="h-5 w-5 text-gray-600 mr-3" />
-                        <span>Email disponible después de solicitar el servicio</span>
-                      </div>
-                      <div className="flex items-center">
-                        <MapPin className="h-5 w-5 text-gray-600 mr-3" />
-                        <span>{serviceData.zones[0]?.locality || 'Ubicación no especificada'}, {serviceData.zones[0]?.province || ''}</span>
-                      </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -531,60 +521,172 @@ export default function ServiceDetail() {
             </div>
           </div>
 
-          {/* Sidebar de reserva */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-md p-6 sticky top-8">
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Pricing Card */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="text-center mb-6">
                 <div className="text-3xl font-bold text-gray-900 mb-2">
-                  {serviceData.price ? `$${serviceData.price}` : 'Consultar precio'}
+                  ${serviceData.price.toLocaleString('es-AR')}
                 </div>
-                <p className="text-gray-600">por servicio</p>
+                <p className="text-gray-600">Por servicio</p>
               </div>
 
               {isAuthenticated ? (
-                user?.id === serviceData.providerId ? (
-                  <div className="text-center py-4">
-                    <p className="text-gray-600">Este es tu servicio</p>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setShowBookingModal(true)}
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center"
-                  >
-                    <Calendar className="h-5 w-5 mr-2" />
-                    Solicitar Servicio
-                  </button>
-                )
+                <button
+                  onClick={() => setShowBookingModal(true)}
+                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Solicitar Servicio
+                </button>
               ) : (
                 <button
                   onClick={() => navigate('/login')}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                 >
-                  Iniciar sesión para solicitar
+                  Iniciar Sesión para Solicitar
                 </button>
               )}
 
-              <div className="mt-6 space-y-3 text-sm text-gray-600">
+              <div className="mt-4 space-y-3 text-sm text-gray-600">
                 <div className="flex items-center">
-                  <Clock className="h-4 w-4 mr-2" />
-                  <span>Respuesta rápida garantizada</span>
+                  <Shield className="h-4 w-4 mr-2 text-green-500" />
+                  Proveedor verificado
                 </div>
                 <div className="flex items-center">
-                  <Shield className="h-4 w-4 mr-2" />
-                  <span>Proveedor verificado</span>
+                  <Clock className="h-4 w-4 mr-2 text-blue-500" />
+                  Respuesta rápida
                 </div>
                 <div className="flex items-center">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  <span>Comunicación directa</span>
+                  <Award className="h-4 w-4 mr-2 text-yellow-500" />
+                  Altamente calificado
                 </div>
+              </div>
+            </div>
+
+            {/* Contact Card */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="font-semibold text-gray-900 mb-4">¿Tienes preguntas?</h3>
+              <div className="space-y-3">
+                <button className="w-full flex items-center justify-center space-x-2 py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Enviar mensaje</span>
+                </button>
+                <button className="w-full flex items-center justify-center space-x-2 py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                  <Phone className="h-4 w-4" />
+                  <span>Llamar</span>
+                </button>
+                <button className="w-full flex items-center justify-center space-x-2 py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                  <Mail className="h-4 w-4" />
+                  <span>Email</span>
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Modal de reserva */}
-      {showBookingModal && <BookingModal />}
+      {/* Booking Modal */}
+      {showBookingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold">Solicitar Servicio</h3>
+              <button
+                onClick={() => setShowBookingModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Fecha preferida
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => {
+                    setSelectedDate(e.target.value);
+                    setSelectedTime(''); // Reset time when date changes
+                  }}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {selectedDate && !isDateAvailable(selectedDate) && (
+                  <p className="text-sm text-red-600 mt-1">
+                    El servicio no está disponible en el día seleccionado
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Hora preferida
+                </label>
+                {selectedDate && isDateAvailable(selectedDate) ? (
+                  <select
+                    value={selectedTime}
+                    onChange={(e) => setSelectedTime(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Seleccionar hora disponible</option>
+                    {generateTimeSlots().map((time) => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    value={selectedTime}
+                    onChange={(e) => setSelectedTime(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={!selectedDate || !isDateAvailable(selectedDate)}
+                  >
+                    <option value="">
+                      {!selectedDate ? 'Selecciona una fecha primero' : 'No hay horarios disponibles'}
+                    </option>
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mensaje adicional (opcional)
+                </label>
+                <textarea
+                  value={requestMessage}
+                  onChange={(e) => setRequestMessage(e.target.value)}
+                  rows={3}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Describe detalles específicos del servicio que necesitas..."
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setShowBookingModal(false)}
+                className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleRequestService}
+                disabled={!selectedDate || !selectedTime || !isDateAvailable(selectedDate)}
+                className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                Enviar Solicitud
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default ServiceDetail;

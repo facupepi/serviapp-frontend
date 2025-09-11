@@ -27,8 +27,8 @@ export default function AboutUs() {
   const team = [
     {
       name: 'Facundo Pepino',
-      role: 'Developer',
-      image: 'https://media.licdn.com/dms/image/v2/D4D03AQHmHNuksHKSng/profile-displayphoto-scale_200_200/B4DZhXc1brG8AY-/0/1753813835340?e=1759968000&v=beta&t=u8h_F_m91AYurowWjt5Yx-HIZkrBlHI115ahzwkaHck',
+      role: 'Software Engineer',
+      image: 'https://media.licdn.com/dms/image/v2/D4D03AQE2mYG1ghmPTw/profile-displayphoto-scale_200_200/B4DZksojv8JAAY-/0/1757390455710?e=1760572800&v=beta&t=Tsdn3j53393HvylhzkUKTIFZWQ5TlcAWnH5IheEZZkI',
       description: 'Estudiante avanzado de Ingeniería en Sistemas de Información, con una visión enfocada en crear soluciones tecnológicas que generen impacto real en las empresas. Comprendo las necesidades del negocio y las traduzco en soluciones técnicas simples.',
       linkedin: 'https://www.linkedin.com/in/facundo-pepino/'
     },
@@ -41,7 +41,7 @@ export default function AboutUs() {
     },
     {
       name: 'Santiago Villalba',
-      role: 'Developer',
+      role: 'Software Engineer',
       image: 'https://santiagovillalba.flyweb.com.ar/assets/img/hero/perfil.png',
       description: 'Desarrollador WEB enfocado en la creación de sitios web personalizables y altamente funcionales. Especializado en diseño y desarrollo de páginas institucionales, landing pages y sitios de ecommerce.',
       linkedin: 'https://www.linkedin.com/in/santiago-villalba-8711832a0/'

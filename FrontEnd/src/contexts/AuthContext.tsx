@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authAPI, UserRegister as BackendUserRegister } from '../api/auth';
 import { tokenStorage, userStorage } from '../utils/storage';
 
@@ -33,6 +33,7 @@ interface Service {
   reviewCount: number;
   price?: number;
   image: string;
+  image_url?: string; // Campo adicional de la API
   zones: Zone[];
   availability: Availability[];
   isActive: boolean;
@@ -74,10 +75,10 @@ interface ServiceRequest {
 interface AuthContextType {
   user: User | null;
   services: Service[];
-  mockProviders: User[];
   userRequests: ServiceRequest[];
   providerRequests: ServiceRequest[];
   favorites: string[];
+  categories: string[];
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (userData: RegisterData) => Promise<{ success: boolean; error?: string; message?: string; requiresLogin?: boolean }>;
   forgotPassword: (email: string) => Promise<{ success: boolean; error?: string; message?: string }>;
@@ -91,6 +92,11 @@ interface AuthContextType {
   submitReview: (serviceRequestId: string, rating: number, comment: string) => Promise<{ success: boolean; error?: string }>;
   createService: (serviceData: CreateServiceData) => Promise<{ success: boolean; error?: string }>;
   updateService: (serviceId: string, serviceData: CreateServiceData) => Promise<{ success: boolean; error?: string }>;
+  getUserServices: () => Promise<{ success: boolean; data?: any[]; error?: string }>;
+  getServices: () => Promise<{ success: boolean; data?: any[]; error?: string }>;
+  getServiceById: (serviceId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+  getCategories: () => Promise<{ success: boolean; data?: string[]; error?: string }>;
+  toggleServiceStatus: (serviceId: string) => Promise<{ success: boolean; error?: string }>;
   deactivateService: (serviceId: string) => Promise<{ success: boolean; error?: string }>;
   reactivateService: (serviceId: string) => Promise<{ success: boolean; error?: string }>;
   deleteService: (serviceId: string) => Promise<{ success: boolean; error?: string }>;
@@ -121,8 +127,9 @@ interface CreateServiceData {
   title: string;
   description: string;
   category: string;
+  price?: number; // Campo price opcional
   zones: Zone[];
-  availability: Availability[];
+  availability: { [key: string]: any }; // Formato objeto para disponibilidad
   image: string;
 }
 
@@ -136,195 +143,36 @@ export const useAuth = () => {
   return context;
 };
 
-// Mock data para desarrollo
-const mockServices: Service[] = [
-  {
-    id: '1',
-    title: 'Plomería Profesional',
-    description: 'Servicios de plomería para hogares y empresas. Reparación de cañerías, destapaciones, instalación de sanitarios y más. Con más de 10 años de experiencia en el rubro.',
-    category: 'Plomería',
-    providerId: '2',
-    providerName: 'Carlos Rodríguez',
-    rating: 4.8,
-    reviewCount: 15,
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&crop=center',
-    zones: [
-      { province: 'Buenos Aires', locality: 'Capital Federal', neighborhood: 'Palermo' },
-      { province: 'Buenos Aires', locality: 'Capital Federal', neighborhood: 'Villa Crespo' }
-    ],
-    availability: [
-      { day: 'monday', timeSlots: [{ start: '09:00', end: '17:00' }] },
-      { day: 'tuesday', timeSlots: [{ start: '09:00', end: '17:00' }] },
-      { day: 'wednesday', timeSlots: [{ start: '09:00', end: '17:00' }] }
-    ],
-    isActive: true,
-    createdAt: '2024-01-15'
-  },
-  {
-    id: '2',
-    title: 'Electricidad y Instalaciones',
-    description: 'Servicios eléctricos completos: instalaciones nuevas, reparaciones, cambio de tableros, iluminación LED y automatización del hogar. Trabajo garantizado y seguro.',
-    category: 'Electricidad',
-    providerId: '3',
-    providerName: 'María González',
-    rating: 4.9,
-    reviewCount: 23,
-    image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop&crop=center',
-    zones: [
-      { province: 'Córdoba', locality: 'Córdoba Capital', neighborhood: 'Nueva Córdoba' }
-    ],
-    availability: [
-      { day: 'monday', timeSlots: [{ start: '08:00', end: '18:00' }] },
-      { day: 'thursday', timeSlots: [{ start: '08:00', end: '18:00' }] },
-      { day: 'friday', timeSlots: [{ start: '08:00', end: '16:00' }] }
-    ],
-    isActive: true,
-    createdAt: '2024-02-10'
-  },
-  {
-    id: '3',
-    title: 'Limpieza Integral del Hogar',
-    description: 'Servicio completo de limpieza residencial y comercial. Limpieza profunda, mantenimiento regular, limpieza post-construcción y desinfección.',
-    category: 'Limpieza',
-    providerId: '2',
-    providerName: 'Carlos Rodríguez',
-    rating: 4.7,
-    reviewCount: 18,
-    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop&crop=center',
-    zones: [
-      { province: 'Buenos Aires', locality: 'Capital Federal', neighborhood: 'Recoleta' }
-    ],
-    availability: [
-      { day: 'tuesday', timeSlots: [{ start: '09:00', end: '17:00' }] },
-      { day: 'wednesday', timeSlots: [{ start: '09:00', end: '17:00' }] },
-      { day: 'thursday', timeSlots: [{ start: '09:00', end: '17:00' }] }
-    ],
-    isActive: true,
-    createdAt: '2024-01-20'
-  },
-  {
-    id: '4',
-    title: 'Jardinería y Paisajismo',
-    description: 'Diseño, mantenimiento y cuidado de jardines. Poda de árboles, césped, plantas ornamentales y sistemas de riego automático.',
-    category: 'Jardinería',
-    providerId: '3',
-    providerName: 'María González',
-    rating: 4.6,
-    reviewCount: 12,
-    image: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&h=300&fit=crop&crop=center',
-    zones: [
-      { province: 'Córdoba', locality: 'Córdoba Capital', neighborhood: 'Cerro de las Rosas' }
-    ],
-    availability: [
-      { day: 'monday', timeSlots: [{ start: '07:00', end: '15:00' }] },
-      { day: 'tuesday', timeSlots: [{ start: '07:00', end: '15:00' }] },
-      { day: 'saturday', timeSlots: [{ start: '08:00', end: '12:00' }] }
-    ],
-    isActive: true,
-    createdAt: '2024-03-05'
-  },
-  {
-    id: '5',
-    title: 'Carpintería y Muebles a Medida',
-    description: 'Fabricación y reparación de muebles de madera. Placards, estanterías, mesas, sillas y trabajos de carpintería en general.',
-    category: 'Carpintería',
-    providerId: '2',
-    providerName: 'Carlos Rodríguez',
-    rating: 4.9,
-    reviewCount: 25,
-    image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400&h=300&fit=crop&crop=center',
-    zones: [
-      { province: 'Buenos Aires', locality: 'Capital Federal', neighborhood: 'San Telmo' }
-    ],
-    availability: [
-      { day: 'monday', timeSlots: [{ start: '08:00', end: '18:00' }] },
-      { day: 'tuesday', timeSlots: [{ start: '08:00', end: '18:00' }] },
-      { day: 'friday', timeSlots: [{ start: '08:00', end: '18:00' }] }
-    ],
-    isActive: true,
-    createdAt: '2024-02-15'
-  }
-];
+// Flag global para prevenir múltiples inicializaciones
+let authContextInitialized = false;
 
-const mockProviders: User[] = [
-  {
-    id: '1',
-    name: 'Juan Carlos Méndez',
-    email: 'juan.mendez@email.com',
-    phone: '+54 11 4567-8901',
-    province: 'Buenos Aires',
-    locality: 'Capital Federal',
-    avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop',
-    rating: 4.9,
-    reviewCount: 127,
-    completedJobs: 234,
-    experience: '8 años',
-    services: ['Plomería y Gasfitería', 'Reparación de cañerías', 'Instalación de grifos', 'Destapado de cloacas'],
-    description: 'Especialista en plomería residencial y comercial con más de 8 años de experiencia. Ofrezco servicios de calidad con garantía extendida. Disponible para emergencias las 24 horas.',
-    certifications: [
-      'Certificado de Gasista Matriculado',
-      'Curso de Soldadura Especializada',
-      'Certificación en Seguridad Laboral'
-    ],
-    createdAt: '2016-03-15'
-  },
-  {
-    id: '2',
-    name: 'Carlos Rodríguez',
-    email: 'carlos.rodriguez@email.com',
-    phone: '+54 11 5678-9012',
-    province: 'Buenos Aires',
-    locality: 'San Telmo',
-    avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop',
-    rating: 4.7,
-    reviewCount: 43,
-    completedJobs: 189,
-    experience: '6 años',
-    services: ['Electricidad', 'Carpintería', 'Limpieza'],
-    description: 'Profesional multi-servicios con experiencia en electricidad, carpintería y limpieza. Trabajo con materiales de primera calidad y garantía en todos mis servicios.',
-    certifications: [
-      'Electricista Matriculado',
-      'Certificado de Carpintería',
-      'Curso de Seguridad e Higiene'
-    ],
-    verified: true,
-    createdAt: '2018-07-20'
-  },
-  {
-    id: '3',
-    name: 'María González',
-    email: 'maria.gonzalez@email.com',
-    phone: '+54 351 234-5678',
-    province: 'Córdoba',
-    locality: 'Cerro de las Rosas',
-    avatar: 'https://images.pexels.com/photos/1181690/pexels-photo-1181690.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop',
-    rating: 4.6,
-    reviewCount: 28,
-    completedJobs: 156,
-    experience: '5 años',
-    services: ['Jardinería y Paisajismo', 'Mantenimiento de jardines', 'Diseño de espacios verdes'],
-    description: 'Especialista en jardinería y paisajismo con amplia experiencia en diseño y mantenimiento de espacios verdes. Trabajo con plantas nativas y sistemas de riego eficientes.',
-    certifications: [
-      'Técnica en Jardinería',
-      'Curso de Paisajismo',
-      'Certificación en Riego Automático'
-    ],
-    verified: true,
-    createdAt: '2019-04-10'
-  }
-];
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [services, setServices] = useState<Service[]>(mockServices);
+  const [services, setServices] = useState<Service[]>([]);
   const [userRequests, setUserRequests] = useState<ServiceRequest[]>([]);
   const [providerRequests, setProviderRequests] = useState<ServiceRequest[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([
+    'Limpieza', 'Jardinería', 'Plomería', 'Electricidad', 'Carpintería', 
+    'Pintura', 'Mecánica', 'Tecnología', 'Educación', 'Salud', 'Belleza', 
+    'Mascotas', 'Transporte', 'Eventos', 'Fotografía', 'Cocina', 'Fitness', 
+    'Música', 'Idiomas', 'Otros'
+  ]);
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [isBlocked, setIsBlocked] = useState(false);
 
   useEffect(() => {
+    // Prevenir múltiples inicializaciones usando flag global
+    if (authContextInitialized) {
+      console.log('⚠️ AuthContext ya inicializado globalmente, saltando...');
+      setLoading(false);
+      return;
+    }
+    
+    console.log('🔄 Inicializando AuthContext...');
+    authContextInitialized = true;
+    
     // Verificar si hay un token guardado al cargar la app
     const token = tokenStorage.getToken();
     const userData = userStorage.getUser();
@@ -332,7 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const attempts = localStorage.getItem('loginAttempts');
     const blockTime = localStorage.getItem('blockTime');
     
-    console.log('🔄 Inicializando AuthContext:', {
+    console.log('🔄 Datos encontrados:', {
       hasToken: !!token,
       hasUserData: !!userData,
       tokenLength: token?.length || 0
@@ -406,7 +254,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     console.log('✅ AuthContext inicialización completada, loading = false');
     setLoading(false);
+    
+    // Cargar categorías del backend
+    loadCategories();
   }, []);
+
+  // Función para cargar categorías
+  const loadCategories = async () => {
+    try {
+      const response = await authAPI.getCategories();
+      if (response.success && response.data) {
+        setCategories(response.data);
+        console.log('✅ Categorías cargadas:', response.data);
+      } else {
+        console.error('❌ Error cargando categorías:', response.error);
+        // Usar categorías por defecto en caso de error
+        setCategories([
+          'Limpieza', 'Jardinería', 'Plomería', 'Electricidad', 'Carpintería', 
+          'Pintura', 'Mecánica', 'Tecnología', 'Educación', 'Salud', 'Belleza', 
+          'Mascotas', 'Transporte', 'Eventos', 'Fotografía', 'Cocina', 'Fitness', 
+          'Música', 'Idiomas', 'Otros'
+        ]);
+      }
+    } catch (error) {
+      console.error('❌ Error cargando categorías:', error);
+      // Usar categorías por defecto en caso de error
+      setCategories([
+        'Limpieza', 'Jardinería', 'Plomería', 'Electricidad', 'Carpintería', 
+        'Pintura', 'Mecánica', 'Tecnología', 'Educación', 'Salud', 'Belleza', 
+        'Mascotas', 'Transporte', 'Eventos', 'Fotografía', 'Cocina', 'Fitness', 
+        'Música', 'Idiomas', 'Otros'
+      ]);
+    }
+  };
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -821,7 +701,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: Date.now().toString(),
         serviceId,
         serviceName: service.title,
-        serviceImage: service.image,
+        serviceImage: service.image_url || service.image || 'https://via.placeholder.com/400x300?text=Sin+Imagen',
         clientId: user.id,
         clientName: user.name,
         providerId: service.providerId,
@@ -913,10 +793,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: 'La descripción debe tener al menos 100 caracteres' };
       }
 
-      // Simulación de creación de servicio
-      console.log('Service created:', serviceData);
-      return { success: true };
+      // Mapear datos del frontend al formato del backend
+      const backendServiceData: any = {
+        title: serviceData.title,
+        description: serviceData.description,
+        category: serviceData.category,
+        price: serviceData.price || 0, // Usar el precio del formulario o 0 por defecto
+        availability: {
+          monday: { available: false },
+          tuesday: { available: false },
+          wednesday: { available: false },
+          thursday: { available: false },
+          friday: { available: false },
+          saturday: { available: false },
+          sunday: { available: false },
+          // Mapear desde el formato frontend (objeto)
+          ...serviceData.availability
+        },
+        zones: serviceData.zones
+          .filter(zone => zone.province && zone.locality)
+          .map(zone => ({
+            province: zone.province,
+            locality: zone.locality,
+            neighborhood: zone.neighborhood || ""
+          })),
+        image_url: serviceData.image
+      };
+
+      const response = await authAPI.createService(backendServiceData);
+      
+      if (response.success && response.data) {
+        console.log('✅ Servicio creado exitosamente:', response.data);
+        // Aquí podrías actualizar el estado local si es necesario
+        return { success: true };
+      } else {
+        return { success: false, error: response.error || 'Error desconocido' };
+      }
     } catch (error) {
+      console.error('❌ Error en createService:', error);
       return { success: false, error: 'Error del servidor' };
     }
   };
@@ -927,29 +841,166 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: 'Debes estar autenticado para editar servicios' };
       }
 
-      // Simulación de actualización con datos reales
-      setServices(prevServices => 
-        prevServices.map(service => 
-          service.id === serviceId && service.providerId === user.id
-            ? {
-                ...service,
-                title: serviceData.title,
-                description: serviceData.description,
-                category: serviceData.category,
-                zones: serviceData.zones,
-                availability: serviceData.availability.map(avail => ({
-                  day: avail.day,
-                  timeSlots: avail.timeSlots
-                })),
-                image: serviceData.image
-              }
-            : service
-        )
-      );
+      console.log('🔄 Datos de entrada updateService:', serviceData);
 
-      console.log('Service updated:', { serviceId, serviceData });
-      return { success: true };
+      // Mapear datos del frontend al formato del backend
+      const backendServiceData: any = {
+        title: serviceData.title,
+        description: serviceData.description,
+        category: serviceData.category,
+        price: serviceData.price || 0, // Incluir el precio
+        availability: {
+          monday: { available: false },
+          tuesday: { available: false },
+          wednesday: { available: false },
+          thursday: { available: false },
+          friday: { available: false },
+          saturday: { available: false },
+          sunday: { available: false },
+          // Mapear desde el formato frontend (objeto)
+          ...serviceData.availability
+        },
+        zones: serviceData.zones
+          .filter(zone => zone.province && zone.locality)
+          .map(zone => ({
+            province: zone.province,      // Backend Go struct espera Province pero API TypeScript espera province
+            locality: zone.locality,      // Usando lowercase para coincidir con la respuesta de la API
+            neighborhood: zone.neighborhood || ""
+          })),
+        image_url: serviceData.image
+      };
+
+      console.log('📤 Datos enviados al backend:', backendServiceData);
+
+      const response = await authAPI.updateService(serviceId, backendServiceData);
+      
+      console.log('📥 Respuesta del backend:', response);
+
+      if (response.success && response.data) {
+        console.log('✅ Servicio actualizado exitosamente:', response.data);
+        
+        // Actualizar estado local si es necesario
+        setServices(prevServices => 
+          prevServices.map(service => 
+            service.id === serviceId && service.providerId === user.id
+              ? {
+                  ...service,
+                  title: serviceData.title,
+                  description: serviceData.description,
+                  category: serviceData.category,
+                  price: serviceData.price,
+                  zones: serviceData.zones,
+                  // availability se maneja directamente del backend en futuras cargas
+                  image: serviceData.image
+                }
+              : service
+          )
+        );
+        
+        return { success: true };
+      } else {
+        console.error('❌ Error del backend al actualizar servicio:', response);
+        return { success: false, error: response.error || 'Error desconocido' };
+      }
     } catch (error) {
+      console.error('❌ Error en updateService:', error);
+      return { success: false, error: 'Error del servidor' };
+    }
+  };
+
+  const getUserServices = useCallback(async (): Promise<{ success: boolean; data?: any[]; error?: string }> => {
+    try {
+      if (!user) {
+        return { success: false, error: 'Debes estar autenticado para obtener tus servicios' };
+      }
+
+      const response = await authAPI.getUserServices();
+      
+      if (response.success && response.data) {
+        console.log('✅ Mis servicios obtenidos:', response.data);
+        return { success: true, data: response.data };
+      } else {
+        return { success: false, error: response.error || 'Error al obtener servicios' };
+      }
+    } catch (error) {
+      console.error('❌ Error en getUserServices:', error);
+      return { success: false, error: 'Error del servidor' };
+    }
+  }, [user?.id]); // Solo dependemos del ID del usuario, no del objeto completo
+
+  const getServices = async (): Promise<{ success: boolean; data?: any[]; error?: string }> => {
+    try {
+      const response = await authAPI.getServices();
+      
+      if (response.success && response.data) {
+        console.log('✅ Servicios públicos obtenidos:', response.data);
+        return { success: true, data: response.data };
+      } else {
+        return { success: false, error: response.error || 'Error al obtener servicios' };
+      }
+    } catch (error) {
+      console.error('❌ Error en getServices:', error);
+      return { success: false, error: 'Error del servidor' };
+    }
+  };
+
+  const getServiceById = useCallback(async (serviceId: string): Promise<{ success: boolean; data?: any; error?: string }> => {
+    try {
+      const response = await authAPI.getServiceById(serviceId);
+      
+      if (response.success && response.data) {
+        console.log('✅ Servicio obtenido por ID:', response.data);
+        return { success: true, data: response.data };
+      } else {
+        return { success: false, error: response.error || 'Error al obtener el servicio' };
+      }
+    } catch (error) {
+      console.error('❌ Error en getServiceById:', error);
+      return { success: false, error: 'Error del servidor' };
+    }
+  }, []);
+
+  const getCategories = useCallback(async (): Promise<{ success: boolean; data?: string[]; error?: string }> => {
+    try {
+      const response = await authAPI.getCategories();
+      
+      if (response.success && response.data) {
+        console.log('✅ Categorías obtenidas:', response.data);
+        setCategories(response.data);
+        return { success: true, data: response.data };
+      } else {
+        return { success: false, error: response.error || 'Error al obtener categorías' };
+      }
+    } catch (error) {
+      console.error('❌ Error en getCategories:', error);
+      return { success: false, error: 'Error del servidor' };
+    }
+  }, []);
+
+  const toggleServiceStatus = async (serviceId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (!user) {
+        return { success: false, error: 'Debes estar autenticado para cambiar el estado del servicio' };
+      }
+
+      const response = await authAPI.toggleServiceStatus(serviceId);
+      
+      if (response.success) {
+        console.log('✅ Estado del servicio cambiado:', response.data || 'Sin datos adicionales');
+        
+        // Actualizar estado local si es necesario
+        // Nota: Como no sabemos el nuevo estado exacto del backend, refrescar los servicios
+        const userServicesResponse = await authAPI.getUserServices();
+        if (userServicesResponse.success && userServicesResponse.data) {
+          setServices(userServicesResponse.data);
+        }
+        
+        return { success: true };
+      } else {
+        return { success: false, error: response.error || 'Error al cambiar estado del servicio' };
+      }
+    } catch (error) {
+      console.error('❌ Error en toggleServiceStatus:', error);
       return { success: false, error: 'Error del servidor' };
     }
   };
@@ -1026,10 +1077,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value: AuthContextType = {
     user,
     services,
-    mockProviders,
     userRequests,
     providerRequests,
     favorites,
+    categories,
     login,
     register,
     forgotPassword,
@@ -1043,6 +1094,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     submitReview,
     createService,
     updateService,
+    getUserServices,
+    getServices,
+    getServiceById,
+    getCategories,
+    toggleServiceStatus,
     deactivateService,
     reactivateService,
     deleteService,

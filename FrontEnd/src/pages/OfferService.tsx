@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   MapPin, 
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
+import { getProvinces, getLocalitiesObject } from '../data/argentina';
 
 interface AvailabilityDay {
   enabled: boolean;
@@ -21,6 +22,7 @@ interface FormData {
   title: string;
   category: string;
   description: string;
+  price: number;
   image: string;
   zones: { province: string; locality: string; neighborhood?: string }[];
   availability: {
@@ -36,13 +38,26 @@ interface FormData {
 
 export default function OfferService() {
   const navigate = useNavigate();
-  const { isAuthenticated, user, createService } = useAuth();
+  const { isAuthenticated, user, createService, categories } = useAuth();
   const { addNotification } = useNotifications();
 
   // Redirigir si no está autenticado
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  // No renderizar nada si no está autenticado (mientras redirige)
   if (!isAuthenticated || !user) {
-    navigate('/login');
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Verificando autenticación...</p>
+        </div>
+      </div>
+    );
   }
 
   // Todos los usuarios pueden ofrecer servicios ahora
@@ -52,6 +67,7 @@ export default function OfferService() {
     title: '',
     category: '',
     description: '',
+    price: 0,
     image: '',
     zones: [],
     availability: {
@@ -75,23 +91,8 @@ export default function OfferService() {
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
-  const categories = [
-    'Plomería', 'Electricidad', 'Limpieza', 'Jardinería', 'Carpintería',
-    'Pintura', 'Fotografía', 'Automotriz', 'Tecnología', 'Mudanzas',
-    'Eventos', 'Bienestar', 'Educación'
-  ];
-
-  const provinces = [
-    'Buenos Aires', 'Córdoba', 'Santa Fe', 'Mendoza', 'Tucumán'
-  ];
-
-  const localities: Record<string, string[]> = {
-    'Buenos Aires': ['Capital Federal', 'La Plata', 'Mar del Plata', 'Bahía Blanca'],
-    'Córdoba': ['Córdoba Capital', 'Villa Carlos Paz', 'Río Cuarto'],
-    'Santa Fe': ['Santa Fe Capital', 'Rosario', 'Rafaela'],
-    'Mendoza': ['Mendoza Capital', 'San Rafael', 'Godoy Cruz'],
-    'Tucumán': ['San Miguel de Tucumán', 'Yerba Buena', 'Banda del Río Salí']
-  };
+  const provinces = getProvinces();
+  const localities = getLocalitiesObject();
 
   const timeOptions = [
     '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
@@ -220,6 +221,7 @@ export default function OfferService() {
     if (step === 1) {
       if (!formData.title.trim()) newErrors.title = 'El título es requerido';
       if (!formData.category) newErrors.category = 'Selecciona una categoría';
+      if (!formData.price || formData.price <= 0) newErrors.price = 'El precio debe ser mayor a 0';
       if (!formData.description.trim()) newErrors.description = 'La descripción es requerida';
       if (formData.description.length < 50) newErrors.description = 'La descripción debe tener al menos 50 caracteres';
     }
@@ -331,6 +333,30 @@ export default function OfferService() {
           ))}
         </select>
         {errors.category && <p className="text-red-500 text-sm mt-1">{errors.category}</p>}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Precio por servicio *
+        </label>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+          <input
+            type="number"
+            min="0"
+            step="100"
+            value={formData.price}
+            onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
+            className={`w-full pl-8 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              errors.price ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="0"
+          />
+        </div>
+        <p className="text-sm text-gray-500 mt-1">
+          Precio estimado por hora o por servicio completo
+        </p>
+        {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
       </div>
 
       <div>

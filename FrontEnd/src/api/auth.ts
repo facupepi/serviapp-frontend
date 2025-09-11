@@ -45,6 +45,59 @@ export interface ResetPasswordRequest {
   new_password: string;
 }
 
+// Interfaces para servicios
+export interface ServiceData {
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  availability: {
+    [key: string]: {
+      start?: string;
+      end?: string;
+      available?: boolean;
+    };
+  };
+  zones: {
+    province: string;
+    locality: string;
+    neighborhood?: string;
+  }[];
+  image_url: string;
+}
+
+export interface ServiceResponse {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  availability: any;
+  zones: any[];
+  status: 'active' | 'inactive';
+  image_url: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategoriesResponse {
+  categories: string[];
+  message: string;
+}
+
+export interface ServicesListResponse {
+  message: string;
+  data: {
+    services: ServiceResponse[];
+    total: number;
+  };
+}
+
+export interface SingleServiceResponse {
+  message: string;
+  data: ServiceResponse;
+}
+
 // Configuración de axios
 import axios from 'axios';
 import { tokenStorage } from '../utils/storage';
@@ -378,6 +431,289 @@ export const authAPI = {
         errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión a internet.';
       } else {
         errorMessage = error.message || 'Error inesperado';
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  },
+
+  // Funciones de servicios
+  createService: async (serviceData: ServiceData): Promise<ApiResponse<ServiceResponse>> => {
+    try {
+      console.log('🚀 Creando servicio:', serviceData);
+      const response = await api.post('/api/services', serviceData);
+      console.log('✅ Servicio creado:', response.data);
+      
+      return {
+        success: true,
+        data: response.data.data,
+        message: response.data.message,
+      };
+    } catch (error: any) {
+      console.error('❌ Error creando servicio:', error);
+      let errorMessage = 'Error al crear el servicio';
+      
+      if (error.response) {
+        const { status, data } = error.response;
+        switch (status) {
+          case 400:
+            errorMessage = data?.message || 'Datos del servicio inválidos. Verifica todos los campos.';
+            break;
+          case 401:
+            errorMessage = 'Debes estar autenticado para crear servicios.';
+            break;
+          case 422:
+            errorMessage = data?.message || 'Los datos no cumplen con las validaciones requeridas.';
+            break;
+          case 429:
+            errorMessage = 'Demasiadas solicitudes. Intenta más tarde.';
+            break;
+          default:
+            errorMessage = data?.message || `Error del servidor (${status})`;
+        }
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  },
+
+  updateService: async (serviceId: string, serviceData: Partial<ServiceData>): Promise<ApiResponse<ServiceResponse>> => {
+    try {
+      console.log('🔄 Actualizando servicio:', serviceId);
+      console.log('📤 Datos a enviar:', JSON.stringify(serviceData, null, 2));
+      const response = await api.put(`/api/services/${serviceId}`, serviceData);
+      console.log('✅ Respuesta exitosa:', response.data);
+      
+      return {
+        success: true,
+        data: response.data.data,
+        message: response.data.message,
+      };
+    } catch (error: any) {
+      console.error('❌ Error actualizando servicio:', error);
+      console.error('❌ Response data:', error.response?.data);
+      console.error('❌ Response status:', error.response?.status);
+      console.error('❌ Response headers:', error.response?.headers);
+      
+      let errorMessage = 'Error al actualizar el servicio';
+      
+      if (error.response) {
+        const { status, data } = error.response;
+        switch (status) {
+          case 400:
+            errorMessage = data?.message || 'Datos del servicio inválidos.';
+            break;
+          case 401:
+            errorMessage = 'Debes estar autenticado para actualizar servicios.';
+            break;
+          case 403:
+            errorMessage = 'No tienes permisos para editar este servicio.';
+            break;
+          case 404:
+            errorMessage = 'Servicio no encontrado.';
+            break;
+          case 422:
+            errorMessage = data?.message || 'Los datos no cumplen con las validaciones requeridas.';
+            break;
+          default:
+            errorMessage = data?.message || `Error del servidor (${status})`;
+        }
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  },
+
+  getUserServices: async (): Promise<ApiResponse<ServiceResponse[]>> => {
+    try {
+      console.log('📋 Obteniendo mis servicios...');
+      const response = await api.get('/api/my-services');
+      console.log('✅ Mis servicios obtenidos:', response.data);
+      
+      return {
+        success: true,
+        data: response.data.data.services,
+        message: response.data.message,
+      };
+    } catch (error: any) {
+      console.error('❌ Error obteniendo mis servicios:', error);
+      let errorMessage = 'Error al obtener los servicios';
+      
+      if (error.response) {
+        const { status, data } = error.response;
+        switch (status) {
+          case 401:
+            errorMessage = 'Debes estar autenticado para ver tus servicios.';
+            break;
+          default:
+            errorMessage = data?.message || `Error del servidor (${status})`;
+        }
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  },
+
+  getServices: async (): Promise<ApiResponse<ServiceResponse[]>> => {
+    try {
+      console.log('📋 Obteniendo servicios públicos...');
+      const response = await api.get('/api/services');
+      console.log('✅ Servicios públicos obtenidos:', response.data);
+      
+      return {
+        success: true,
+        data: response.data.data.services,
+        message: response.data.message,
+      };
+    } catch (error: any) {
+      console.error('❌ Error obteniendo servicios:', error);
+      let errorMessage = 'Error al obtener los servicios';
+      
+      if (error.response) {
+        const { status, data } = error.response;
+        errorMessage = data?.message || `Error del servidor (${status})`;
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  },
+
+  getServiceById: async (serviceId: string): Promise<ApiResponse<ServiceResponse>> => {
+    try {
+      console.log(`📋 Obteniendo servicio con ID: ${serviceId}...`);
+      const response = await api.get(`/api/services/${serviceId}`);
+      console.log('✅ Respuesta completa del servicio:', response.data);
+      
+      // Verificar la estructura de la respuesta
+      let serviceData;
+      if (response.data.data && response.data.data.service) {
+        serviceData = response.data.data.service;
+      } else if (response.data.data) {
+        serviceData = response.data.data;
+      } else {
+        serviceData = response.data;
+      }
+      
+      console.log('📋 Datos del servicio procesados:', serviceData);
+      
+      return {
+        success: true,
+        data: serviceData,
+        message: response.data.message,
+      };
+    } catch (error: any) {
+      console.error('❌ Error obteniendo servicio por ID:', error);
+      let errorMessage = 'Error al obtener el servicio';
+      
+      if (error.response) {
+        const { status, data } = error.response;
+        console.error('❌ Error response:', { status, data });
+        if (status === 404) {
+          errorMessage = 'Servicio no encontrado';
+        } else {
+          errorMessage = data?.message || `Error del servidor (${status})`;
+        }
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  },
+
+  toggleServiceStatus: async (serviceId: string): Promise<ApiResponse<ServiceResponse>> => {
+    try {
+      console.log('🔄 Cambiando estado del servicio:', serviceId);
+      const response = await api.patch(`/api/services/${serviceId}`);
+      console.log('✅ Estado del servicio cambiado:', response.data);
+      
+      return {
+        success: true,
+        data: response.data.data,
+        message: response.data.message,
+      };
+    } catch (error: any) {
+      console.error('❌ Error cambiando estado del servicio:', error);
+      let errorMessage = 'Error al cambiar el estado del servicio';
+      
+      if (error.response) {
+        const { status, data } = error.response;
+        switch (status) {
+          case 401:
+            errorMessage = 'Debes estar autenticado para cambiar el estado del servicio.';
+            break;
+          case 403:
+            errorMessage = 'No tienes permisos para cambiar el estado de este servicio.';
+            break;
+          case 404:
+            errorMessage = 'Servicio no encontrado.';
+            break;
+          default:
+            errorMessage = data?.message || `Error del servidor (${status})`;
+        }
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  },
+
+  getCategories: async (): Promise<ApiResponse<string[]>> => {
+    try {
+      console.log('🔄 Obteniendo categorías desde el backend...');
+      const response = await api.get('/api/categories');
+      console.log('✅ Categorías obtenidas:', response.data);
+      
+      return {
+        success: true,
+        data: response.data.categories,
+        message: response.data.message,
+      };
+    } catch (error: any) {
+      console.error('❌ Error obteniendo categorías:', error);
+      let errorMessage = 'Error al obtener categorías';
+      
+      if (error.response) {
+        const { status, data } = error.response;
+        switch (status) {
+          case 500:
+            errorMessage = 'Error del servidor al obtener categorías.';
+            break;
+          default:
+            errorMessage = data?.message || `Error del servidor (${status})`;
+        }
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
       }
 
       return {

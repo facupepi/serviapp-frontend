@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, User, Mail, Lock, Phone, MapPin } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Lock, Phone, MapPin, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getProvinces } from '../data/argentina';
 import Alert from '../components/Alert';
 
 export default function Register() {
+  const navigate = useNavigate();
+  const { register, isAuthenticated, user, loading: authLoading } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,37 +21,29 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+
+  // Redirigir si el usuario ya está autenticado
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+      console.log('✅ Usuario ya autenticado, redirigiendo al dashboard');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, user, authLoading, navigate]);
+
+  // Mostrar loading mientras se verifica autenticación
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Verificando autenticación...</p>
+        </div>
+      </div>
+    );
+  }
   const [successMessage, setSuccessMessage] = useState('');
 
-  const { register } = useAuth();
-  const navigate = useNavigate();
-
-  const provinces = [
-    'Buenos Aires',
-    'Catamarca',
-    'Chaco',
-    'Chubut',
-    'Ciudad Autónoma de Buenos Aires',
-    'Córdoba',
-    'Corrientes',
-    'Entre Ríos',
-    'Formosa',
-    'Jujuy',
-    'La Pampa',
-    'La Rioja',
-    'Mendoza',
-    'Misiones',
-    'Neuquén',
-    'Río Negro',
-    'Salta',
-    'San Juan',
-    'San Luis',
-    'Santa Cruz',
-    'Santa Fe',
-    'Santiago del Estero',
-    'Tierra del Fuego',
-    'Tucumán'
-  ];
+  const provinces = getProvinces();
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
