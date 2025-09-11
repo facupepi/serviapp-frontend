@@ -67,9 +67,7 @@ const StatCard: React.FC<StatCardProps> = ({ icon, title, value, color }) => (
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, loading, userRequests, providerRequests, favorites, getUserServices } = useAuth();
-  const [userServices, setUserServices] = useState<any[]>([]);
-  const [servicesLoading, setServicesLoading] = useState(true);
+  const { user, isAuthenticated, loading, userRequests, providerRequests, favorites, services, getUserServices } = useAuth();
 
   // Verificar autenticación en useEffect para evitar problemas de renderizado
   useEffect(() => {
@@ -80,44 +78,13 @@ export default function Dashboard() {
     }
   }, [loading, isAuthenticated, user, navigate]);
 
-  // Cargar servicios del usuario
+  // Cargar servicios del usuario cuando se autentica
   useEffect(() => {
-    if (isAuthenticated && user) {
-      const loadUserServices = async () => {
-        setServicesLoading(true);
-        try {
-          const result = await getUserServices();
-          if (result.success && result.data) {
-            setUserServices(result.data);
-          } else {
-            console.error('Error al cargar servicios del usuario:', result.error);
-            setUserServices([]);
-          }
-        } catch (error) {
-          console.error('Error al cargar servicios:', error);
-          setUserServices([]);
-        } finally {
-          setServicesLoading(false);
-        }
-      };
-
-      loadUserServices();
+    if (isAuthenticated && user && services.length === 0) {
+      console.log('📋 Cargando servicios del usuario en Dashboard...');
+      getUserServices();
     }
-  }, [isAuthenticated, user]); // Removemos getUserServices de las dependencias
-
-  // Debug: Verificar estado de autenticación solo en transiciones importantes
-  useEffect(() => {
-    // Solo mostrar logs en transiciones significativas
-    if (!loading && isAuthenticated && user) {
-      console.log('✅ Dashboard: Usuario autenticado y cargado:', {
-        userId: user.id,
-        email: user.email,
-        tokenExists: document.cookie.includes('authToken')
-      });
-    } else if (!loading && !isAuthenticated) {
-      console.log('❌ Dashboard: Usuario no autenticado');
-    }
-  }, [loading, isAuthenticated, user]);
+  }, [isAuthenticated, user, services.length, getUserServices]);
 
   // Mostrar loading mientras inicializa o mientras no está autenticado
   if (loading || !isAuthenticated || !user) {
@@ -139,8 +106,18 @@ export default function Dashboard() {
     pendingRequests: userRequests.filter((r: any) => r.status === 'pending').length,
     favoriteServices: favorites.length,
     totalReceivedRequests: providerRequests.length,
-    activeServices: servicesLoading ? 0 : userServices.filter((s: any) => s.status === 'active').length
+    activeServices: services.filter((s: any) => s.isActive).length,
+    inactiveServices: services.filter((s: any) => !s.isActive).length,
+    totalServices: services.length
   };
+
+  // Debug para el Dashboard
+  console.log('🎯 Dashboard Debug:', {
+    'Total servicios': services.length,
+    'Servicios activos': userStats.activeServices,
+    'Servicios inactivos': userStats.inactiveServices,
+    'Servicios array': services.map(s => ({ title: s.title, isActive: s.isActive }))
+  });
 
   const allActions = [
     {
@@ -178,7 +155,7 @@ export default function Dashboard() {
     {
       icon: <Shield className="h-6 w-6 text-white" />,
       title: 'Mis Servicios',
-      description: 'Administra todos los servicios que ofreces y sus configuraciones',
+      description: 'Administra todos los servicios que ofreces y sus configuraciones para ofrecer a otros usuarios',
       action: 'Gestionar Servicios',
       onClick: () => navigate('/my-services'),
       color: 'bg-purple-500'
@@ -214,9 +191,21 @@ export default function Dashboard() {
     },
     {
       icon: <Shield className="h-6 w-6 text-white" />,
-      title: 'Mis Servicios Activos',
+      title: 'Total Servicios',
+      value: userStats.totalServices,
+      color: 'bg-gray-500'
+    },
+    {
+      icon: <Shield className="h-6 w-6 text-white" />,
+      title: 'Servicios Activos',
       value: userStats.activeServices,
       color: 'bg-green-500'
+    },
+    {
+      icon: <Shield className="h-6 w-6 text-white" />,
+      title: 'Servicios Inactivos',
+      value: userStats.inactiveServices,
+      color: 'bg-red-500'
     },
     {
       icon: <MessageSquare className="h-6 w-6 text-white" />,

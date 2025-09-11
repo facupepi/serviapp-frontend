@@ -150,84 +150,89 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Iniciar Sesión
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            ¿No tienes una cuenta?{' '}
-            <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
-              Regístrate aquí
-            </Link>
-          </p>
-        </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
+          Iniciar Sesión
+        </h2>
+        <p className="mt-2 text-center text-sm text-gray-600">
+          ¿No tienes una cuenta?{' '}
+          <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
+            Regístrate aquí
+          </Link>
+        </p>
+      </div>
 
-        {/* Controles de Debug */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-yellow-800 mb-3">🔧 Herramientas</h3>
-          <div className="space-y-2">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {/* Herramientas de desarrollo */}
+          <div className="mb-4">
             <button
               type="button"
               onClick={fillUserCredentials}
-              className="w-full px-3 py-2 bg-green-200 text-green-800 rounded text-sm hover:bg-green-300"
+              className="w-full px-4 py-2 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 border border-green-300"
             >
               👤 Cargar credenciales
             </button>
-            <div className="text-xs text-yellow-700">
-              Intentos: {loginAttempts}/5 {isBlocked && '- BLOQUEADO'}
-            </div>
           </div>
-        </div>
 
-        <div className="bg-white shadow-xl rounded-lg p-8">
-          <div className="space-y-6">
+          <form className="space-y-6">
+            {/* Mensaje de error general */}
             {errors.form && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 flex items-start space-x-3">
-                <AlertCircle className="h-5 w-5 text-red-400 mt-0.5" />
-                <div className="text-sm text-red-700">{errors.form}</div>
+              <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                <div className="flex items-start">
+                  <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+                  <div className="text-sm text-red-700">{errors.form}</div>
+                </div>
               </div>
             )}
 
+            {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email
               </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
                 <input
                   id="email"
+                  name="email"
                   type="email"
+                  required
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
+                  className={`appearance-none block w-full pl-10 pr-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.email ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="tu@email.com"
                   autoComplete="email"
                 />
               </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-              )}
+              {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
             </div>
 
+            {/* Contraseña */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Contraseña
               </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
                 <input
                   id="password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
+                  required
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.password ? 'border-red-500' : 'border-gray-300'
+                  className={`appearance-none block w-full pl-10 pr-10 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.password ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="••••••••"
                   autoComplete="current-password"
@@ -235,17 +240,20 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 hover:text-gray-600"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
-                  {showPassword ? <EyeOff /> : <Eye />}
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  )}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-              )}
+              {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
             </div>
 
-            <div className="flex items-center justify-between">
+            {/* Link de recuperar contraseña */}
+            <div className="flex items-center justify-end">
               <Link
                 to="/forgot-password"
                 className="text-sm text-blue-600 hover:text-blue-500"
@@ -254,31 +262,40 @@ export default function Login() {
               </Link>
             </div>
 
-            <button
-              type="button"
-              onClick={handleLoginClick}
-              disabled={loading || isBlocked}
-              className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white ${
-                loading || isBlocked
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-              } transition duration-150 ease-in-out`}
-            >
-              {loading ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Iniciando sesión...
+            {/* Botón de submit */}
+            <div>
+              <button
+                type="button"
+                onClick={handleLoginClick}
+                disabled={loading || isBlocked}
+                className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                  loading || isBlocked
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {loading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Iniciando sesión...
+                  </div>
+                ) : isBlocked ? (
+                  'Cuenta bloqueada'
+                ) : (
+                  'Iniciar Sesión'
+                )}
+              </button>
+            </div>
+
+            {/* Información adicional para desarrollo */}
+            {(loginAttempts > 0 || isBlocked) && (
+              <div className="mt-4 text-center">
+                <div className="text-xs text-gray-500">
+                  Intentos: {loginAttempts}/5 {isBlocked && '- BLOQUEADO'}
                 </div>
-              ) : isBlocked ? (
-                'Cuenta bloqueada'
-              ) : (
-                'Iniciar Sesión'
-              )}
-            </button>
-          </div>
+              </div>
+            )}
+          </form>
         </div>
       </div>
     </div>

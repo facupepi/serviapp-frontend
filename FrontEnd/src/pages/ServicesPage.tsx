@@ -117,9 +117,13 @@ export default function ServicesPage() {
       try {
         const result = await getServices();
         if (result.success && result.data) {
+          console.log('🌐 ServicesPage - Servicios recibidos:', result.data.length);
+          result.data.forEach((service: any, index: number) => {
+            console.log(`🔍 Servicio ${index + 1}: "${service.title}" - Status: "${service.status}"`);
+          });
           setServices(result.data);
         } else {
-          console.error('Error al cargar servicios:', result.error);
+          console.error('❌ Error cargando servicios:', result.error);
           setServices([]);
         }
       } catch (error) {
@@ -133,10 +137,11 @@ export default function ServicesPage() {
     loadServices();
   }, [getServices]);
 
-  // Filtrar servicios en el cliente
+  // Filtrar servicios basándose en todos los criterios
   const filteredServices = services.filter(service => {
     const matchesSearch = !searchQuery || 
       service.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      service.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       service.description?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesCategory = !selectedCategory || service.category === selectedCategory;
@@ -151,10 +156,19 @@ export default function ServicesPage() {
     // Solo mostrar servicios activos
     const isActive = service.status === 'active';
     
-    return matchesSearch && matchesCategory && matchesLocation && isActive;
+    const passes = matchesSearch && matchesCategory && matchesLocation && isActive;
+    
+    return passes;
   });
 
-  useEffect(() => {
+  // Debug del filtrado
+  console.log('🔄 ServicesPage filtrado:', {
+    'Total servicios cargados': services.length,
+    'Servicios después del filtro': filteredServices.length,
+    'Query de búsqueda': searchQuery,
+    'Categoría seleccionada': selectedCategory,
+    'Provincia seleccionada': selectedProvince
+  });  useEffect(() => {
     // Actualizar URL cuando cambien los filtros
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
@@ -164,11 +178,6 @@ export default function ServicesPage() {
     
     setSearchParams(params);
   }, [searchQuery, selectedCategory, selectedProvince, selectedLocality, setSearchParams]);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // La búsqueda se actualiza automáticamente por el useEffect
-  };
 
   const clearFilters = () => {
     setSearchQuery('');

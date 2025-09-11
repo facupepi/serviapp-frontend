@@ -76,10 +76,9 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
 export default function MyServices() {
   const navigate = useNavigate();
-  const { isAuthenticated, user, getUserServices, toggleServiceStatus, deleteService } = useAuth();
+  const { isAuthenticated, user, services, toggleServiceStatus, deleteService, getUserServices } = useAuth();
   const { addNotification } = useNotifications();
   const [loading, setLoading] = useState(false);
-  const [myServices, setMyServices] = useState<any[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     type: 'toggle' | 'delete';
@@ -100,36 +99,27 @@ export default function MyServices() {
     }
   }, [isAuthenticated, user, navigate]);
 
-  // Cargar servicios del usuario
+  // Cargar servicios del usuario cuando se autentica
   useEffect(() => {
-    if (!isAuthenticated || !user) {
-      return; // No cargar servicios si no está autenticado
+    if (isAuthenticated && user && services.length === 0) {
+      console.log('📋 Cargando servicios del usuario en MyServices...');
+      getUserServices();
     }
+  }, [isAuthenticated, user, services.length, getUserServices]);
 
-    const loadServices = async () => {
-      setLoading(true);
-      try {
-        const result = await getUserServices();
-        if (result.success && result.data) {
-          setMyServices(result.data);
-        } else {
-          addNotification({
-            type: 'error',
-            message: result.error || 'Error al cargar los servicios'
-          });
-        }
-      } catch (error) {
-        addNotification({
-          type: 'error',
-          message: 'Error al cargar los servicios'
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadServices();
-  }, [isAuthenticated, user]); // Removemos getUserServices y addNotification de las dependencias
+  // Debug para MyServices
+  useEffect(() => {
+    if (services.length > 0) {
+      const activeCount = services.filter((s: any) => s.isActive).length;
+      const inactiveCount = services.filter((s: any) => !s.isActive).length;
+      console.log('🏠 MyServices Debug:', {
+        'Total servicios': services.length,
+        'Servicios activos': activeCount,
+        'Servicios inactivos': inactiveCount,
+        'Servicios detalle': services.map(s => ({ title: s.title, isActive: s.isActive }))
+      });
+    }
+  }, [services]);
 
   // No renderizar nada si no está autenticado (mientras redirige)
   if (!isAuthenticated || !user) {
@@ -173,11 +163,8 @@ export default function MyServices() {
             window.location.reload();
           }, 1000);
         } else {
-          // Para otras acciones, solo refrescar la lista de servicios
-          const refreshResult = await getUserServices();
-          if (refreshResult.success && refreshResult.data) {
-            setMyServices(refreshResult.data);
-          }
+          // Para otras acciones, refrescar usando el contexto
+          await getUserServices();
         }
       } else {
         addNotification({
@@ -233,7 +220,7 @@ export default function MyServices() {
   };
 
   const ServiceCard = ({ service }: { service: any }) => {
-    const isInactive = service.status !== 'active';
+    const isInactive = !service.isActive;
     
     return (
       <div className={`bg-white rounded-lg shadow-md overflow-hidden ${isInactive ? 'opacity-60' : ''}`}>
@@ -248,11 +235,11 @@ export default function MyServices() {
           />
           <div className="absolute top-4 right-4">
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              service.status === 'active'
+              service.isActive
                 ? 'bg-green-100 text-green-800'
                 : 'bg-red-100 text-red-800'
             }`}>
-              {service.status === 'active' ? 'Activo' : 'Inactivo'}
+              {service.isActive ? 'Activo' : 'Inactivo'}
             </span>
           </div>
         </div>
@@ -281,7 +268,7 @@ export default function MyServices() {
           <div className="flex items-center justify-between">
             <div className="flex space-x-2">
               {/* Solo mostrar el botón "Ver" si el servicio está activo */}
-              {service.status === 'active' && (
+              {service.isActive && (
                 <button
                   onClick={() => navigate(`/service/${service.id}`)}
                   className="flex items-center px-3 py-2 rounded-lg transition-colors bg-blue-100 text-blue-700 hover:bg-blue-200"
@@ -294,8 +281,13 @@ export default function MyServices() {
               
               <button
                 onClick={() => navigate(`/edit-service/${service.id}`)}
-                className="flex items-center px-3 py-2 rounded-lg transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200"
-                title="Editar servicio"
+                disabled={!service.isActive}
+                className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
+                  service.isActive
+                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+                title={service.isActive ? 'Editar servicio' : 'No se puede editar un servicio inactivo'}
               >
                 <Edit className="h-4 w-4 mr-1" />
                 Editar
@@ -309,15 +301,15 @@ export default function MyServices() {
                   service.id,
                   service.title
                 )}
-                disabled={loading || service.status !== 'active'}
+                disabled={loading || !service.isActive}
                 className={`flex items-center px-3 py-2 rounded-lg transition-colors disabled:opacity-50 ${
-                  loading || service.status !== 'active'
+                  loading || !service.isActive
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
                 }`}
-                title={service.status === 'active' ? 'Desactivar servicio' : 'Función no disponible'}
+                title={service.isActive ? 'Desactivar servicio' : 'Función no disponible'}
               >
-                {service.status === 'active' ? (
+                {service.isActive ? (
                   <>
                     <EyeOff className="h-4 w-4 mr-1" />
                     Desactivar
@@ -381,7 +373,7 @@ export default function MyServices() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {loading && myServices.length === 0 ? (
+        {loading && services.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -399,7 +391,7 @@ export default function MyServices() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Total Servicios</p>
-                    <p className="text-2xl font-bold text-gray-900">{myServices.length}</p>
+                    <p className="text-2xl font-bold text-gray-900">{services.length}</p>
                   </div>
                 </div>
               </div>
@@ -412,7 +404,7 @@ export default function MyServices() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Servicios Activos</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {myServices.filter(s => s.status === 'active').length}
+                      {services.filter((s: any) => s.isActive).length}
                     </p>
                   </div>
                 </div>
@@ -426,7 +418,7 @@ export default function MyServices() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Servicios Inactivos</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {myServices.filter(s => s.status !== 'active').length}
+                      {services.filter((s: any) => !s.isActive).length}
                     </p>
                   </div>
                 </div>
@@ -434,7 +426,7 @@ export default function MyServices() {
             </div>
 
             {/* Services grid */}
-            {myServices.length > 0 ? (
+            {services.length > 0 ? (
               <>
                 {loading && (
                   <div className="fixed top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center">
@@ -443,7 +435,7 @@ export default function MyServices() {
                   </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {myServices.map((service) => (
+                  {services.map((service: any) => (
                     <ServiceCard key={service.id} service={service} />
                   ))}
                 </div>

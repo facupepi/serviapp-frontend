@@ -914,10 +914,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'Debes estar autenticado para obtener tus servicios' };
       }
 
+      console.log('📋 Obteniendo mis servicios...');
       const response = await authAPI.getUserServices();
       
       if (response.success && response.data) {
         console.log('✅ Mis servicios obtenidos:', response.data);
+        
+        // Log para debug: ver qué status recibimos
+        response.data.forEach((service: any, index: number) => {
+          console.log(`🔍 Servicio ${index + 1}: "${service.title}" - Status: "${service.status}"`);
+        });
+        
+        // Mapear ServiceResponse[] a Service[] y actualizar el estado
+        const mappedServices: Service[] = response.data.map((serviceResponse: any) => {
+          const mappedService = {
+            id: serviceResponse.id.toString(),
+            title: serviceResponse.title,
+            description: serviceResponse.description,
+            category: serviceResponse.category,
+            providerId: user.id,
+            providerName: user.name,
+            providerAvatar: user.avatar,
+            rating: 0,
+            reviewCount: 0,
+            price: serviceResponse.price,
+            image: serviceResponse.image_url || 'https://via.placeholder.com/400x300?text=Sin+Imagen',
+            image_url: serviceResponse.image_url,
+            zones: Array.isArray(serviceResponse.zones) ? serviceResponse.zones : [],
+            availability: serviceResponse.availability || [],
+            isActive: serviceResponse.status === 'active',
+            createdAt: serviceResponse.created_at || new Date().toISOString()
+          };
+          
+          console.log(`🔄 Mapeado "${mappedService.title}": status="${serviceResponse.status}" → isActive=${mappedService.isActive}`);
+          return mappedService;
+        });
+        
+        setServices(mappedServices);
+        const activeCount = mappedServices.filter(s => s.isActive).length;
+        console.log(`✅ Servicios actualizados en el estado: ${mappedServices.length} total, ${activeCount} activos`);
+        
         return { success: true, data: response.data };
       } else {
         return { success: false, error: response.error || 'Error al obtener servicios' };
@@ -926,7 +962,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('❌ Error en getUserServices:', error);
       return { success: false, error: 'Error del servidor' };
     }
-  }, [user?.id]); // Solo dependemos del ID del usuario, no del objeto completo
+  }, [user?.id, user?.name, user?.avatar]); // Incluir dependencias necesarias para el mapeo
 
   const getServices = async (): Promise<{ success: boolean; data?: any[]; error?: string }> => {
     try {
@@ -992,7 +1028,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Nota: Como no sabemos el nuevo estado exacto del backend, refrescar los servicios
         const userServicesResponse = await authAPI.getUserServices();
         if (userServicesResponse.success && userServicesResponse.data) {
-          setServices(userServicesResponse.data);
+          console.log('🔄 Refrescando servicios después de toggle...');
+          
+          // Mapear ServiceResponse[] a Service[]
+          const mappedServices: Service[] = userServicesResponse.data.map((serviceResponse: any) => {
+            const mappedService = {
+              id: serviceResponse.id.toString(),
+              title: serviceResponse.title,
+              description: serviceResponse.description,
+              category: serviceResponse.category,
+              providerId: user.id,
+              providerName: user.name,
+              providerAvatar: user.avatar,
+              rating: 0, // No disponible en ServiceResponse
+              reviewCount: 0, // No disponible en ServiceResponse
+              price: serviceResponse.price,
+              image: serviceResponse.image_url || 'https://via.placeholder.com/400x300?text=Sin+Imagen',
+              image_url: serviceResponse.image_url,
+              zones: Array.isArray(serviceResponse.zones) ? serviceResponse.zones : [],
+              availability: serviceResponse.availability || [],
+              isActive: serviceResponse.status === 'active',
+              createdAt: serviceResponse.created_at || new Date().toISOString()
+            };
+            
+            if (serviceResponse.id.toString() === serviceId) {
+              console.log(`🎯 Servicio toggleado "${mappedService.title}": status="${serviceResponse.status}" → isActive=${mappedService.isActive}`);
+            }
+            
+            return mappedService;
+          });
+          
+          setServices(mappedServices);
+          const activeCount = mappedServices.filter(s => s.isActive).length;
+          console.log(`✅ Servicios refrescados: ${mappedServices.length} total, ${activeCount} activos`);
         }
         
         return { success: true };
