@@ -171,6 +171,7 @@ export default function ServicesPage() {
   };
 
   const clearFilters = () => {
+    setSearchQuery('');
     setSelectedCategory('');
     setSelectedProvince('');
     setSelectedLocality('');
@@ -212,55 +213,22 @@ export default function ServicesPage() {
         {/* Sidebar de filtros - Desktop */}
         <div className="hidden lg:block lg:w-80 lg:flex-shrink-0">
           <div className="sticky top-0 h-fit bg-white border-r border-gray-200">
-            <FiltersSidebar />
+            <FiltersSidebar 
+              searchTerm={searchQuery}
+              setSearchTerm={setSearchQuery}
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
+              selectedProvince={selectedProvince}
+              setSelectedProvince={setSelectedProvince}
+              selectedLocality={selectedLocality}
+              setSelectedLocality={setSelectedLocality}
+              onClearFilters={clearFilters}
+            />
           </div>
         </div>
 
         {/* Contenido principal */}
         <div className="flex-1">
-          <div className="bg-white shadow-sm border-b lg:border-b-0">
-            <div className="max-w-none px-4 sm:px-6 lg:px-8 py-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                <h1 className="text-3xl font-bold text-gray-900 mb-4 lg:mb-0">
-                  Buscar Servicios
-                </h1>
-                
-                {/* Botón de filtros móvil */}
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="lg:hidden flex items-center px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filtros
-                </button>
-              </div>
-              
-              {/* Barra de búsqueda */}
-              <form onSubmit={handleSearch} className="mt-4">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar servicio por nombre, rubro o localidad"
-                    className="block w-full pl-10 pr-16 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <div className="absolute inset-y-0 right-0 flex items-center">
-                    <button
-                      type="submit"
-                      className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 mr-2"
-                    >
-                      Buscar
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
-
           {/* Sidebar de filtros móvil */}
           {showFilters && (
             <div className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50">
@@ -276,13 +244,35 @@ export default function ServicesPage() {
                     </button>
                   </div>
                 </div>
-                <FiltersSidebar />
+                <FiltersSidebar 
+                  searchTerm={searchQuery}
+                  setSearchTerm={setSearchQuery}
+                  selectedCategory={selectedCategory}
+                  setSelectedCategory={setSelectedCategory}
+                  selectedProvince={selectedProvince}
+                  setSelectedProvince={setSelectedProvince}
+                  selectedLocality={selectedLocality}
+                  setSelectedLocality={setSelectedLocality}
+                  onClearFilters={clearFilters}
+                />
               </div>
             </div>
           )}
 
           {/* Contenido de servicios */}
           <div className="max-w-none px-4 sm:px-6 lg:px-8 py-6">
+            {/* Header con filtros móvil */}
+            <div className="lg:hidden mb-6 flex items-center justify-between">
+              <h1 className="text-2xl font-bold text-gray-900">Servicios</h1>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filtros
+              </button>
+            </div>
+            
             {services.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-gray-400 mb-4">

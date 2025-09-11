@@ -4,34 +4,81 @@ import { Filter, Search, X, ChevronDown } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getProvinces, getLocalitiesObject } from '../data/argentina';
 
-export default function FiltersSidebar() {
+interface FiltersSidebarProps {
+  searchTerm?: string;
+  setSearchTerm?: (term: string) => void;
+  selectedCategory?: string;
+  setSelectedCategory?: (category: string) => void;
+  selectedProvince?: string;
+  setSelectedProvince?: (province: string) => void;
+  selectedLocality?: string;
+  setSelectedLocality?: (locality: string) => void;
+  onSearch?: () => void;
+  onClearFilters?: () => void;
+}
+
+export default function FiltersSidebar({
+  searchTerm: externalSearchTerm,
+  setSearchTerm: externalSetSearchTerm,
+  selectedCategory: externalSelectedCategory,
+  setSelectedCategory: externalSetSelectedCategory,
+  selectedProvince: externalSelectedProvince,
+  setSelectedProvince: externalSetSelectedProvince,
+  selectedLocality: externalSelectedLocality,
+  setSelectedLocality: externalSetSelectedLocality,
+  onSearch,
+  onClearFilters
+}: FiltersSidebarProps) {
   const navigate = useNavigate();
   const { categories } = useAuth();
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedProvince, setSelectedProvince] = useState('');
-  const [selectedLocality, setSelectedLocality] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Estados locales solo si no se proporcionan desde fuera
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
+  const [localSelectedCategory, setLocalSelectedCategory] = useState('');
+  const [localSelectedProvince, setLocalSelectedProvince] = useState('');
+  const [localSelectedLocality, setLocalSelectedLocality] = useState('');
+  
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+
+  // Usar estados externos si están disponibles, de lo contrario usar estados locales
+  const searchTerm = externalSearchTerm !== undefined ? externalSearchTerm : localSearchTerm;
+  const setSearchTerm = externalSetSearchTerm || setLocalSearchTerm;
+  const selectedCategory = externalSelectedCategory !== undefined ? externalSelectedCategory : localSelectedCategory;
+  const setSelectedCategory = externalSetSelectedCategory || setLocalSelectedCategory;
+  const selectedProvince = externalSelectedProvince !== undefined ? externalSelectedProvince : localSelectedProvince;
+  const setSelectedProvince = externalSetSelectedProvince || setLocalSelectedProvince;
+  const selectedLocality = externalSelectedLocality !== undefined ? externalSelectedLocality : localSelectedLocality;
+  const setSelectedLocality = externalSetSelectedLocality || setLocalSelectedLocality;
 
   const provinces = getProvinces();
   const localities = getLocalitiesObject();
 
   const handleSearch = () => {
-    const params = new URLSearchParams();
-    if (searchTerm) params.set('q', searchTerm);
-    if (selectedCategory) params.set('category', selectedCategory);
-    if (selectedProvince) params.set('provincia', selectedProvince);
-    if (selectedLocality) params.set('localidad', selectedLocality);
-    
-    navigate(`/services?${params.toString()}`);
+    if (onSearch) {
+      onSearch();
+    } else {
+      // Comportamiento por defecto - navegar con parámetros
+      const params = new URLSearchParams();
+      if (searchTerm) params.set('q', searchTerm);
+      if (selectedCategory) params.set('category', selectedCategory);
+      if (selectedProvince) params.set('provincia', selectedProvince);
+      if (selectedLocality) params.set('localidad', selectedLocality);
+      
+      navigate(`/services?${params.toString()}`);
+    }
   };
 
   const clearFilters = () => {
-    setSearchTerm('');
-    setSelectedCategory('');
-    setSelectedProvince('');
-    setSelectedLocality('');
+    if (onClearFilters) {
+      onClearFilters();
+    } else {
+      // Comportamiento por defecto
+      setSearchTerm('');
+      setSelectedCategory('');
+      setSelectedProvince('');
+      setSelectedLocality('');
+    }
   };
 
   const handleProvinceChange = (province: string) => {
