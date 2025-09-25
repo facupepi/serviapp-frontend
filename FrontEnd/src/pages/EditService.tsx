@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
+import { getProvinces, getLocalitiesObject } from '../data/argentina';
 
 interface AvailabilityDay {
   enabled: boolean;
@@ -34,31 +35,15 @@ interface FormData {
   };
 }
 
-// Datos de provincias y localidades de Argentina
-const ARGENTINA_PROVINCES = [
-  {
-    province: 'Buenos Aires',
-    localities: ['Capital Federal', 'La Plata', 'Mar del Plata', 'Bahía Blanca', 'Tandil', 'Olavarría']
-  },
-  {
-    province: 'Córdoba',
-    localities: ['Córdoba Capital', 'Villa Carlos Paz', 'Río Cuarto', 'Alta Gracia']
-  },
-  {
-    province: 'Santa Fe',
-    localities: ['Santa Fe Capital', 'Rosario', 'Venado Tuerto', 'Rafaela']
-  },
-  {
-    province: 'Mendoza',
-    localities: ['Mendoza Capital', 'San Rafael', 'Godoy Cruz', 'Maipú']
-  }
-];
-
 export default function EditService() {
   const navigate = useNavigate();
   const { serviceId } = useParams();
   const { isAuthenticated, user, updateService, getServiceById, categories } = useAuth();
   const { addNotification } = useNotifications();
+
+  // Datos de provincias y localidades
+  const provinces = getProvinces();
+  const localitiesData = getLocalitiesObject();
   const [serviceData, setServiceData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
@@ -312,8 +297,8 @@ export default function EditService() {
 
     if (!formData.description.trim()) {
       newErrors.description = 'La descripción es obligatoria';
-    } else if (formData.description.length < 100) {
-      newErrors.description = 'La descripción debe tener al menos 100 caracteres';
+    } else if (formData.description.length < 50) {
+      newErrors.description = 'La descripción debe tener al menos 50 caracteres';
     }
 
     setErrors(newErrors);
@@ -621,14 +606,14 @@ export default function EditService() {
                     className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       errors.description ? 'border-red-300' : 'border-gray-300'
                     }`}
-                    placeholder="Describe en detalle tu servicio, experiencia, herramientas que utilizas, etc. (mínimo 100 caracteres)"
+                    placeholder="Describe en detalle tu servicio, experiencia, herramientas que utilizas, etc. (mínimo 50 caracteres)"
                   />
                   <div className="flex justify-between mt-1">
                     {errors.description && (
                       <p className="text-sm text-red-600">{errors.description}</p>
                     )}
                     <p className="text-sm text-gray-500 ml-auto">
-                      {formData.description.length}/100 caracteres mínimo
+                      {formData.description.length}/50 caracteres mínimo
                     </p>
                   </div>
                 </div>
@@ -696,9 +681,9 @@ export default function EditService() {
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                           <option value="">Seleccionar</option>
-                          {ARGENTINA_PROVINCES.map(prov => (
-                            <option key={prov.province} value={prov.province}>
-                              {prov.province}
+                          {provinces.map(province => (
+                            <option key={province} value={province}>
+                              {province}
                             </option>
                           ))}
                         </select>
@@ -715,7 +700,7 @@ export default function EditService() {
                           disabled={!zone.province}
                         >
                           <option value="">Seleccionar</option>
-                          {zone.province && ARGENTINA_PROVINCES.find(p => p.province === zone.province)?.localities.map(locality => (
+                          {zone.province && localitiesData[zone.province]?.map((locality: string) => (
                             <option key={locality} value={locality}>
                               {locality}
                             </option>
