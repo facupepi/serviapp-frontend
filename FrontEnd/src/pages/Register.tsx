@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, User, Mail, Lock, Phone, MapPin, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Lock, Phone, MapPin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import logger from '../utils/logger';
 import { getProvinces } from '../data/argentina';
 import Alert from '../components/Alert';
 
@@ -27,7 +28,7 @@ export default function Register() {
   // Redirigir si el usuario ya está autenticado
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
-      console.log('✅ Usuario ya autenticado, redirigiendo al dashboard');
+      logger.info('Usuario ya autenticado, redirigiendo al dashboard');
       navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, user, authLoading, navigate]);
@@ -143,7 +144,7 @@ export default function Register() {
         setErrors({ general: result.error || 'Error al registrarse. Intenta nuevamente.' });
       }
     } catch (error) {
-      console.error('Error durante el registro:', error);
+      logger.error('Error durante el registro:', error);
       setErrors({ general: 'Error de conexión. Verifica tu internet e intenta nuevamente.' });
     } finally {
       setLoading(false);

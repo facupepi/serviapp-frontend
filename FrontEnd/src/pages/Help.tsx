@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Search, 
   MessageCircle, 
@@ -312,39 +312,6 @@ export default function Help() {
                 +54 11 4567-8900
               </p>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Links */}
-      <div className="py-16 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Enlaces Útiles
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <a href="/como-funciona" className="block bg-white p-4 rounded-lg hover:shadow-md transition-shadow">
-              <h3 className="font-semibold text-gray-900 mb-1">Cómo Funciona</h3>
-              <p className="text-gray-600 text-sm">Guía completa de la plataforma</p>
-            </a>
-            
-            <a href="/terminos-y-condiciones" className="block bg-white p-4 rounded-lg hover:shadow-md transition-shadow">
-              <h3 className="font-semibold text-gray-900 mb-1">Términos y Condiciones</h3>
-              <p className="text-gray-600 text-sm">Nuestros términos de uso</p>
-            </a>
-            
-            <a href="/politica-de-privacidad" className="block bg-white p-4 rounded-lg hover:shadow-md transition-shadow">
-              <h3 className="font-semibold text-gray-900 mb-1">Política de Privacidad</h3>
-              <p className="text-gray-600 text-sm">Cómo protegemos tus datos</p>
-            </a>
-            
-            <a href="/sobre-nosotros" className="block bg-white p-4 rounded-lg hover:shadow-md transition-shadow">
-              <h3 className="font-semibold text-gray-900 mb-1">Sobre Nosotros</h3>
-              <p className="text-gray-600 text-sm">Conoce nuestro equipo</p>
-            </a>
           </div>
         </div>
       </div>

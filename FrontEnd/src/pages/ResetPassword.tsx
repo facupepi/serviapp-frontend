@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import logger from '../utils/logger';
 
 export default function ResetPassword() {
   const { token } = useParams<{ token: string }>();
@@ -20,16 +21,16 @@ export default function ResetPassword() {
   const { resetPassword } = useAuth();
 
   useEffect(() => {
-    console.log('🔑 ResetPassword montado con token:', token || 'NO TOKEN');
-    console.log('🔑 Token type:', typeof token);
-    console.log('🔑 Token length:', token?.length || 0);
-    console.log('🔑 Token empty?', !token || token.trim() === '');
+    logger.debug('ResetPassword montado con token:', token || 'NO TOKEN');
+    logger.debug('Token type:', typeof token);
+    logger.debug('Token length:', token?.length || 0);
+    logger.debug('Token empty?', !token || token.trim() === '');
     
     if (!token || token.trim() === '') {
-      console.error('❌ No se recibió token válido, redirigiendo a login');
+      logger.error('No se recibió token válido, redirigiendo a login');
       navigate('/login');
     } else {
-      console.log('✅ Token válido recibido, continuando...');
+      logger.info('Token válido recibido, continuando...');
       // Verificar si el token parece ser JWT y si está expirado
       if (token.includes('.')) {
         try {
@@ -40,14 +41,14 @@ export default function ResetPassword() {
             if (payload.exp) {
               const now = Math.floor(Date.now() / 1000);
               if (payload.exp < now) {
-                console.log('⏰ Token JWT detectado como expirado');
+                logger.info('Token JWT detectado como expirado');
                 setTokenExpired(true);
                 return;
               }
             }
           }
-        } catch (e) {
-          console.log('🔍 No se pudo decodificar como JWT, continuando...');
+            } catch (e) {
+          logger.debug('No se pudo decodificar como JWT, continuando...');
         }
       }
     }
@@ -85,7 +86,7 @@ export default function ResetPassword() {
     
     // Validación exhaustiva del token
     if (!token || token.trim() === '') {
-      console.error('❌ Token vacío en handleSubmit:', { token, type: typeof token, length: token?.length });
+      logger.error('Token vacío en handleSubmit:', { token, type: typeof token, length: token?.length });
       setErrors({ submit: 'Token de recuperación inválido. Por favor, solicita un nuevo enlace.' });
       return;
     }
@@ -98,21 +99,21 @@ export default function ResetPassword() {
     setErrors({}); // Limpiar errores previos
 
     try {
-      console.log('🔒 Iniciando reset de contraseña...');
-      console.log('🎫 Token para enviar:', token.length > 20 ? token.substring(0, 20) + '...' : token);
-      console.log('🎫 Token length:', token.length);
+  logger.debug('Iniciando reset de contraseña...');
+  logger.debug('Token para enviar:', token.length > 20 ? token.substring(0, 20) + '...' : token);
+  logger.debug('Token length:', token.length);
       
       const result = await resetPassword(token, password, confirmPassword);
       
       if (result.success) {
-        console.log('✅ Contraseña restablecida exitosamente:', result.message);
+  logger.info('Contraseña restablecida exitosamente:', result.message);
         setSuccess(true);
         // Redirigir a login después de 3 segundos
         setTimeout(() => {
           navigate('/login');
         }, 3000);
       } else {
-        console.error('❌ Error al restablecer contraseña:', result.error);
+  logger.error('Error al restablecer contraseña:', result.error);
         
         // Detectar el tipo específico de error
         const errorMsg = result.error || '';
@@ -125,7 +126,7 @@ export default function ResetPassword() {
         }
       }
     } catch (error) {
-      console.error('Error inesperado en reset password:', error);
+      logger.error('Error inesperado en reset password:', error);
       setErrors({ submit: 'Error del servidor. Inténtalo de nuevo.' });
     } finally {
       setLoading(false);

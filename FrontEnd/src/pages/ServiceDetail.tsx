@@ -3,17 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Star, 
   MapPin, 
-  Shield, 
-  Clock,
-  User,
   Heart,
-  ArrowLeft,
-  Phone,
-  Mail,
-  Award,
-  MessageSquare
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import logger from '../utils/logger';
 import { Service } from '../types/api';
 
 const ServiceDetail = () => {
@@ -25,7 +19,9 @@ const ServiceDetail = () => {
     addToFavorites,
     removeFromFavorites,
     favorites, 
-    requestService
+    requestService,
+    user,
+    getUserServices
   } = useAuth();
   
   const [activeTab, setActiveTab] = useState('overview');
@@ -36,6 +32,7 @@ const ServiceDetail = () => {
   const [serviceData, setServiceData] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUserService, setIsUserService] = useState(false);
 
   useEffect(() => {
     const loadService = async () => {
@@ -50,15 +47,32 @@ const ServiceDetail = () => {
         const result = await getServiceById(id);
         
         if (result.success && result.data) {
-          console.log('✅ Servicio cargado:', result.data);
+          logger.info('Servicio cargado:', result.data);
           setServiceData(result.data);
           setError(null);
+          
+          // Verificar si el servicio pertenece al usuario
+          if (isAuthenticated && user) {
+            try {
+              const userServicesResult = await getUserServices();
+              if (userServicesResult.success && userServicesResult.data) {
+                const userOwnsService = userServicesResult.data.some(
+                  (userService: any) => userService.id.toString() === id
+                );
+                logger.debug('Usuario es dueño del servicio:', userOwnsService);
+                logger.debug('Servicios del usuario:', userServicesResult.data.map((s: any) => ({ id: s.id, title: s.title })));
+                setIsUserService(userOwnsService);
+              }
+              } catch (error) {
+                logger.error('Error verificando servicios del usuario:', error);
+              }
+          }
         } else {
-          console.error('❌ Error cargando servicio:', result.error);
+          logger.error('Error cargando servicio:', result.error);
           setError(result.error || 'Error al cargar el servicio');
         }
       } catch (error) {
-        console.error('❌ Error inesperado:', error);
+        logger.error('Error inesperado:', error);
         setError('Error inesperado al cargar el servicio');
       } finally {
         setLoading(false);
@@ -66,7 +80,7 @@ const ServiceDetail = () => {
     };
 
     loadService();
-  }, [id, getServiceById]);
+  }, [id, getServiceById, getUserServices, isAuthenticated, user]);
 
   if (loading) {
     return (
@@ -137,109 +151,142 @@ const ServiceDetail = () => {
     }
   };
 
-  const formatZones = (zones: any[]) => {
-    if (!zones || zones.length === 0) return 'Zona no especificada';
-    
-    // Agrupar por localidad
-    const groupedZones: { [key: string]: string[] } = {};
-    zones.forEach(zone => {
-      const locality = zone.locality || 'Localidad';
-      if (!groupedZones[locality]) {
-        groupedZones[locality] = [];
-      }
-      groupedZones[locality].push(zone.neighborhood || 'Barrio');
+  // Normaliza la estructura mixta de availability a un mapping por día
+  const normalizeAvailability = (availability: any) => {
+    const dayOrder = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+    const normalized: Record<string, { available: boolean; timeSlots: Array<{start:string;end:string}> }> = {};
+
+    // Inicializar días como no disponibles por defecto
+    dayOrder.forEach(d => {
+      normalized[d] = { available: false, timeSlots: [] };
     });
-    
-    // Formar el string de zonas
-    const zoneStrings = Object.entries(groupedZones).map(([locality, neighborhoods]) => {
-      if (neighborhoods.length <= 2) {
-        return `${neighborhoods.join(', ')} (${locality})`;
+
+    if (!availability || typeof availability !== 'object') return normalized;
+
+    // Primero procesar entradas con timeSlots (claves numéricas y otras con datos reales)
+    // Luego procesar entradas con available:false para no sobrescribir datos reales
+    const entries = Object.entries(availability);
+    const entriesWithSlots: Array<[string, any]> = [];
+    const entriesWithAvailableFalse: Array<[string, any]> = [];
+
+    for (const [key, val] of entries) {
+      if (!val) continue;
+      const entry: any = val;
+      
+      // Si tiene timeSlots o start/end, tiene prioridad
+      if ((Array.isArray(entry.timeSlots) && entry.timeSlots.length) || (entry.start && entry.end)) {
+        entriesWithSlots.push([key, val]);
+      } else if (entry.available === false) {
+        entriesWithAvailableFalse.push([key, val]);
       } else {
-        return `${neighborhoods.slice(0, 2).join(', ')} y ${neighborhoods.length - 2} más (${locality})`;
+        // Otros casos (available:true sin slots, etc.)
+        entriesWithSlots.push([key, val]);
       }
-    });
-    
-    return zoneStrings.join(' • ');
+    }
+
+    // Procesar primero las entradas con datos de horarios
+    for (const [key, val] of entriesWithSlots) {
+      const entry: any = val;
+      const maybeDay = entry.day || key;
+      const day = String(maybeDay).toLowerCase();
+      if (!normalized[day]) continue;
+
+      const slots: Array<{start:string;end:string}> = [];
+      if (Array.isArray(entry.timeSlots) && entry.timeSlots.length) {
+        entry.timeSlots.forEach((s: any) => {
+          if (s?.start && s?.end) slots.push({ start: s.start, end: s.end });
+        });
+      }
+
+      if (entry.start && entry.end) {
+        slots.push({ start: entry.start, end: entry.end });
+      }
+
+      if (slots.length) {
+        normalized[day].timeSlots = slots;
+        normalized[day].available = true;
+      } else if (entry.available === true) {
+        normalized[day].available = true;
+      }
+    }
+
+    // Procesar después las entradas con available:false, solo si no hay datos ya
+    for (const [key, val] of entriesWithAvailableFalse) {
+      const entry: any = val;
+      const maybeDay = entry.day || key;
+      const day = String(maybeDay).toLowerCase();
+      if (!normalized[day]) continue;
+
+      // Solo aplicar available:false si no hay timeSlots ya establecidos
+      if (normalized[day].timeSlots.length === 0) {
+        normalized[day].available = false;
+        normalized[day].timeSlots = [];
+      }
+    }
+
+    return normalized;
   };
 
+  // Formatea la disponibilidad para mostrar por día, usando la normalización
   const formatAvailability = (availability: any): string[] => {
-    if (!availability) return ['Disponibilidad: Consultar'];
-    
-    const days: string[] = [];
-    const dayNames = {
-      monday: 'Lunes',
-      tuesday: 'Martes', 
-      wednesday: 'Miércoles',
-      thursday: 'Jueves',
-      friday: 'Viernes',
-      saturday: 'Sábado',
-      sunday: 'Domingo'
+    const dayNames: Record<string, string> = {
+      monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles', thursday: 'Jueves', friday: 'Viernes', saturday: 'Sábado', sunday: 'Domingo'
     };
-    
-    // Definir el orden correcto de los días (Lunes a Domingo)
-    const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    
-    dayOrder.forEach((day) => {
-      const schedule = availability[day];
-      if (schedule && schedule.start && schedule.end) {
-        const dayName = dayNames[day as keyof typeof dayNames];
-        days.push(`${dayName}: ${schedule.start} - ${schedule.end}`);
-      } else if (schedule && schedule.available === false) {
-        const dayName = dayNames[day as keyof typeof dayNames];
-        days.push(`${dayName}: No disponible`);
-      }
+    const dayOrder = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+
+    const norm = normalizeAvailability(availability);
+
+    return dayOrder.map((d) => {
+      const human = dayNames[d];
+      const dayEntry = norm[d];
+      if (!dayEntry) return `${human}: No disponible`;
+      if (!dayEntry.available || (dayEntry.timeSlots.length === 0)) return `${human}: No disponible`;
+      const parts = dayEntry.timeSlots.map(s => `${s.start} - ${s.end}`);
+      return `${human}: ${parts.join(', ')}`;
     });
-    
-    return days.length > 0 ? days : ['Disponibilidad: Consultar'];
   };
+
+
 
   const generateTimeSlots = () => {
     if (!serviceData?.availability) return [];
-    
-    const timeSlots = [];
+
     const selectedDateObj = selectedDate ? new Date(selectedDate) : null;
-    
     if (!selectedDateObj) return [];
-    
-    // Obtener el día de la semana (0 = domingo, 1 = lunes, etc.)
+
     const dayOfWeek = selectedDateObj.getDay();
     const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayKey = dayKeys[dayOfWeek];
-    
-    const availability = serviceData.availability[dayKey];
-    
-    if (!availability || !availability.start || !availability.end) {
-      return [];
-    }
-    
-    // Generar slots de 1 hora entre start y end
-    const startTime = availability.start;
-    const endTime = availability.end;
-    
-    const [startHour] = startTime.split(':').map(Number);
-    const [endHour] = endTime.split(':').map(Number);
-    
-    let currentHour = startHour;
-    
-    while (currentHour < endHour) {
-      const timeSlot = `${currentHour.toString().padStart(2, '0')}:00`;
-      timeSlots.push(timeSlot);
-      currentHour++;
-    }
-    
-    return timeSlots;
+
+    const norm = normalizeAvailability(serviceData.availability);
+    const dayEntry = norm[dayKey];
+    if (!dayEntry || !dayEntry.timeSlots.length) return [];
+
+    const slots: string[] = [];
+    // Para cada franja, generar horas enteras desde start hasta end-1
+    dayEntry.timeSlots.forEach(ts => {
+      const [startHour] = ts.start.split(':').map(Number);
+      const [endHour] = ts.end.split(':').map(Number);
+      for (let h = startHour; h < endHour; h++) {
+        slots.push(`${h.toString().padStart(2, '0')}:00`);
+      }
+    });
+
+    // Eliminar duplicados y ordenar
+    return Array.from(new Set(slots)).sort();
   };
 
   const isDateAvailable = (date: string) => {
     if (!serviceData?.availability || !date) return false;
-    
+
     const dateObj = new Date(date);
     const dayOfWeek = dateObj.getDay();
     const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayKey = dayKeys[dayOfWeek];
-    
-    const availability = serviceData.availability[dayKey];
-    return availability && availability.start && availability.end;
+
+    const norm = normalizeAvailability(serviceData.availability);
+    const dayEntry = norm[dayKey];
+    return !!(dayEntry && dayEntry.timeSlots && dayEntry.timeSlots.length > 0);
   };
 
   return (
@@ -258,40 +305,87 @@ const ServiceDetail = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Service Images */}
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="aspect-w-16 aspect-h-9">
-                <img
-                  src={serviceData.image_url}
-                  alt={serviceData.title}
-                  className="w-full h-80 object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&h=400&fit=crop&crop=center';
-                  }}
-                />
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Service Images */}
+          <div className="lg:w-1/2 w-full flex-shrink-0 flex items-center justify-center">
+            <div className="relative rounded-2xl overflow-hidden mb-6 shadow-xl border border-gray-200 bg-gradient-to-br from-blue-50 to-gray-100 w-full h-[420px] lg:h-[500px] max-w-[600px] flex items-center justify-center">
+              <img
+                src={serviceData.image_url}
+                alt={serviceData.title}
+                className="object-cover w-full h-full mx-auto my-auto"
+                style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&h=400&fit=crop&crop=center';
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-black/30 text-white text-sm font-medium backdrop-blur-sm rounded-b-2xl flex items-center gap-2 pointer-events-none">
+                Imagen del servicio
               </div>
             </div>
-
-            {/* Service Info */}
-            <div className="bg-white rounded-xl shadow-sm p-8">
+          </div>
+          {/* Service Info */}
+          <div className="lg:w-1/2 w-full flex flex-col">
+            <div className="bg-white rounded-xl shadow-sm p-8 flex-1 flex flex-col h-[420px] lg:h-[500px]">
               <div className="flex items-start justify-between mb-6">
-                <div>
+                <div className="flex-1">
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">
                     {serviceData.title}
                   </h1>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600">
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      {formatZones(serviceData.zones)}
+                  {/* Ubicaciones en filas separadas con icono */}
+                  <div className="space-y-2">
+                    {serviceData.zones && serviceData.zones.length > 0 ? (
+                      serviceData.zones.map((zone: any, idx: number) => (
+                        <div key={idx} className="flex items-center text-sm text-gray-600">
+                          <MapPin className="h-4 w-4 mr-2 text-gray-700" />
+                          <span>
+                            {zone.neighborhood} ({zone.locality}, {zone.province})
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <MapPin className="h-4 w-4 mr-2 text-gray-700" />
+                        <span>Zona no especificada</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Precio + CTA debajo de ubicaciones */}
+                  <div className="mt-4 flex flex-wrap items-center gap-4">
+                    <div className="text-2xl font-bold text-gray-900">
+                      ${serviceData.price.toLocaleString('es-AR')}
                     </div>
-                    <div className="flex items-center">
-                      <Shield className="h-4 w-4 mr-1" />
-                      Verificado
-                    </div>
+                    {/* Si el usuario es el dueño, mostrar Editar Servicio y aclaración */}
+                    {/* debug logs removed */}
+                    {isAuthenticated && isUserService ? (
+                      <>
+                        <button
+                          onClick={() => navigate(`/edit-service/${serviceData?.id}`)}
+                          className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          Editar Servicio
+                        </button>
+                        <div className="mt-2 text-xs text-gray-500 italic">
+                          Estás viendo la vista pública de tu servicio, tal como la ven otros usuarios.
+                        </div>
+                      </>
+                    ) : isAuthenticated ? (
+                      <button
+                        onClick={() => setShowBookingModal(true)}
+                        className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Solicitar Servicio
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => navigate('/login')}
+                        className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Iniciar Sesión para Solicitar
+                      </button>
+                    )}
                   </div>
                 </div>
                 <button
@@ -299,7 +393,7 @@ const ServiceDetail = () => {
                     ? removeFromFavorites(serviceData.id.toString()) 
                     : addToFavorites(serviceData.id.toString())
                   }
-                  className={`p-2 rounded-full transition-colors ${
+                  className={`ml-4 p-2 rounded-full transition-colors ${
                     isFavorite 
                       ? 'text-red-500 bg-red-50 hover:bg-red-100' 
                       : 'text-gray-400 bg-gray-50 hover:bg-gray-100'
@@ -307,35 +401,6 @@ const ServiceDetail = () => {
                 >
                   <Heart className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
                 </button>
-              </div>
-
-              {/* Provider Info */}
-              <div className="flex items-center space-x-4 mb-8 p-4 bg-gray-50 rounded-lg">
-                <div className="h-12 w-12 bg-blue-600 rounded-full flex items-center justify-center">
-                  <User className="h-6 w-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-medium">Proveedor Profesional</span>
-                    <Award className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div className="flex items-center mt-1">
-                    <div className="flex items-center mr-4">
-                      {renderStars(4.8)}
-                      <span className="text-sm text-gray-600 ml-2">
-                        4.8 (24 reseñas)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <button className="p-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
-                    <MessageSquare className="h-5 w-5" />
-                  </button>
-                  <button className="p-2 text-green-600 bg-green-50 rounded-lg hover:bg-green-100">
-                    <Phone className="h-5 w-5" />
-                  </button>
-                </div>
               </div>
 
               {/* Tabs */}
@@ -368,7 +433,7 @@ const ServiceDetail = () => {
                     <p className="text-gray-700 leading-relaxed">
                       {serviceData.description}
                     </p>
-                    <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid md:grid-cols-1 gap-6">
                       <div>
                         <h4 className="font-medium text-gray-900 mb-3">Detalles del servicio</h4>
                         <ul className="text-sm text-gray-600 space-y-2">
@@ -380,12 +445,6 @@ const ServiceDetail = () => {
                             <span>• Estado:</span>
                             <span className={`font-medium ${serviceData.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
                               {serviceData.status === 'active' ? 'Activo' : 'Inactivo'}
-                            </span>
-                          </li>
-                          <li className="flex justify-between">
-                            <span>• Precio:</span>
-                            <span className="font-medium text-blue-600">
-                              ${serviceData.price.toLocaleString('es-AR')}
                             </span>
                           </li>
                           <li className="flex justify-between">
@@ -402,24 +461,6 @@ const ServiceDetail = () => {
                           </li>
                         </ul>
                       </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-3">Zona de cobertura</h4>
-                        <div className="space-y-2">
-                          {serviceData.zones.map((zone: any, index: number) => (
-                            <div key={index} className="text-sm bg-gray-50 p-3 rounded-lg">
-                              <div className="font-medium text-gray-900">
-                                📍 {zone.neighborhood}
-                              </div>
-                              <div className="text-gray-600">
-                                {zone.locality}, {zone.province}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-3 text-xs text-gray-500">
-                          Cobertura en {serviceData.zones.length} zona{serviceData.zones.length > 1 ? 's' : ''}
-                        </div>
-                      </div>
                     </div>
                   </div>
                 )}
@@ -427,8 +468,6 @@ const ServiceDetail = () => {
                 {activeTab === 'availability' && (
                   <div className="space-y-6">
                     <h4 className="font-medium text-gray-900">Horarios disponibles</h4>
-                    
-                    {/* Horarios detallados por día */}
                     <div className="space-y-3">
                       {formatAvailability(serviceData.availability).map((daySchedule, index) => (
                         <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -436,46 +475,10 @@ const ServiceDetail = () => {
                             {daySchedule.split(':')[0]}
                           </span>
                           <span className="text-sm text-gray-600">
-                            {daySchedule.includes('No disponible') 
-                              ? 'Cerrado' 
-                              : daySchedule.split(': ')[1]
-                            }
+                            {daySchedule.includes('No disponible') ? 'Cerrado' : daySchedule.split(': ')[1]}
                           </span>
                         </div>
                       ))}
-                    </div>
-                    
-                    {/* Vista visual de días disponibles */}
-                    <div className="space-y-4">
-                      <h5 className="font-medium text-gray-900">Vista semanal</h5>
-                      <div className="grid grid-cols-7 gap-2 text-center text-sm">
-                        {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day, index) => {
-                          const dayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-                          const schedule = serviceData.availability?.[day];
-                          const isAvailable = schedule && schedule.start && schedule.end;
-                          
-                          return (
-                            <div key={day} className="space-y-2">
-                              <div
-                                className={`p-3 rounded-lg ${
-                                  isAvailable
-                                    ? 'bg-green-50 text-green-700 border border-green-200'
-                                    : 'bg-gray-50 text-gray-400 border border-gray-200'
-                                }`}
-                              >
-                                {dayLabels[index]}
-                              </div>
-                              {isAvailable && (
-                                <div className="text-xs text-gray-600">
-                                  <div>{schedule.start}</div>
-                                  <div>-</div>
-                                  <div>{schedule.end}</div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
                     </div>
                   </div>
                 )}
@@ -492,9 +495,7 @@ const ServiceDetail = () => {
                         <span className="text-sm text-gray-500">(24 reseñas)</span>
                       </div>
                     </div>
-                    
                     <div className="space-y-4">
-                      {/* Ejemplo de reseñas */}
                       {[1, 2, 3].map((review) => (
                         <div key={review} className="border-b border-gray-100 pb-4">
                           <div className="flex items-start space-x-4">
@@ -517,69 +518,6 @@ const ServiceDetail = () => {
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Pricing Card */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="text-center mb-6">
-                <div className="text-3xl font-bold text-gray-900 mb-2">
-                  ${serviceData.price.toLocaleString('es-AR')}
-                </div>
-                <p className="text-gray-600">Por servicio</p>
-              </div>
-
-              {isAuthenticated ? (
-                <button
-                  onClick={() => setShowBookingModal(true)}
-                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Solicitar Servicio
-                </button>
-              ) : (
-                <button
-                  onClick={() => navigate('/login')}
-                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Iniciar Sesión para Solicitar
-                </button>
-              )}
-
-              <div className="mt-4 space-y-3 text-sm text-gray-600">
-                <div className="flex items-center">
-                  <Shield className="h-4 w-4 mr-2 text-green-500" />
-                  Proveedor verificado
-                </div>
-                <div className="flex items-center">
-                  <Clock className="h-4 w-4 mr-2 text-blue-500" />
-                  Respuesta rápida
-                </div>
-                <div className="flex items-center">
-                  <Award className="h-4 w-4 mr-2 text-yellow-500" />
-                  Altamente calificado
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Card */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">¿Tienes preguntas?</h3>
-              <div className="space-y-3">
-                <button className="w-full flex items-center justify-center space-x-2 py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                  <MessageSquare className="h-4 w-4" />
-                  <span>Enviar mensaje</span>
-                </button>
-                <button className="w-full flex items-center justify-center space-x-2 py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Phone className="h-4 w-4" />
-                  <span>Llamar</span>
-                </button>
-                <button className="w-full flex items-center justify-center space-x-2 py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Mail className="h-4 w-4" />
-                  <span>Email</span>
-                </button>
               </div>
             </div>
           </div>

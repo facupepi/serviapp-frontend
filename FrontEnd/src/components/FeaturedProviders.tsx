@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import logger from '../utils/logger';
 import { MapPin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Service } from '../types/api';
@@ -25,7 +26,7 @@ export default function FeaturedProviders() {
           setFeaturedServices(activeServices);
         }
       } catch (error) {
-        console.error('Error loading featured services:', error);
+        logger.error('Error loading featured services:', error);
       } finally {
         setLoading(false);
       }
@@ -136,13 +137,23 @@ export default function FeaturedProviders() {
                   <h3 className="font-semibold text-gray-900 mb-2 line-clamp-1">{service.title}</h3>
                   <p className="text-gray-600 text-sm mb-3 line-clamp-2">{service.description}</p>
 
-                  {/* Location */}
-                  <div className="flex items-center space-x-2 mb-3">
-                    <MapPin className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-600 text-sm">
-                      {service.zones.map(zone => zone.neighborhood).slice(0, 2).join(', ')}
-                      {service.zones.length > 2 && ` +${service.zones.length - 2}`}
-                    </span>
+                  {/* Locations: una debajo de otra con icono */}
+                  <div className="space-y-1 mb-3">
+                    {service.zones && service.zones.length > 0 ? (
+                      service.zones.map((zone, idx) => (
+                        <div key={idx} className="flex items-center text-sm text-gray-600">
+                          <MapPin className="h-4 w-4 mr-1 text-gray-400" />
+                          <span>
+                            {zone.neighborhood} ({zone.locality}, {zone.province})
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex items-center text-sm text-gray-400">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        <span>Zona no especificada</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Price and Status */}

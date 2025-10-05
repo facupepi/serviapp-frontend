@@ -101,6 +101,7 @@ export interface SingleServiceResponse {
 // Configuración de axios
 import axios from 'axios';
 import { tokenStorage } from '../utils/storage';
+import logger from '../utils/logger';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -136,9 +137,9 @@ api.interceptors.response.use(
       // Token expirado o inválido, limpiar cookies
       // NOTA: NO forzamos navegación aquí para evitar reloads
       // La lógica de redirección se maneja en el AuthContext
-      tokenStorage.removeToken();
-      localStorage.removeItem('userData');
-      console.log('🚫 Token inválido/expirado - datos limpiados');
+  tokenStorage.removeToken();
+  localStorage.removeItem('userData');
+  logger.info('Token inválido/expirado - datos limpiados');
     }
     return Promise.reject(error);
   }
@@ -151,11 +152,11 @@ export const authAPI = {
   register: async (userData: UserRegister): Promise<ApiResponse<AuthResponse>> => {
     try {
       // Log detallado para debugging
-      console.log('🚀 Enviando datos de registro:', userData);
-      console.log('📡 URL:', `${API_BASE_URL}/api/user/register`);
+  logger.debug('Enviando datos de registro:', userData);
+  logger.debug('URL:', `${API_BASE_URL}/api/user/register`);
       
       const response = await api.post('/api/user/register', userData);
-      console.log('✅ Respuesta exitosa:', response.data);
+  logger.info('Respuesta exitosa:', response.data);
       
       return {
         success: true,
@@ -163,10 +164,10 @@ export const authAPI = {
       };
     } catch (error: any) {
       // Log detallado del error
-      console.error('❌ Error en registro:', error);
-      console.error('📊 Error response:', error.response);
-      console.error('📋 Error data:', error.response?.data);
-      console.error('🔢 Status code:', error.response?.status);
+  logger.error('Error en registro:', error);
+  logger.error('Error response:', error.response);
+  logger.error('Error data:', error.response?.data);
+  logger.error('Status code:', error.response?.status);
       
       // Manejo específico de errores
       let errorMessage = 'Error al registrarse';
@@ -175,8 +176,8 @@ export const authAPI = {
         const status = error.response.status;
         const data = error.response.data;
         
-        console.log('🔍 Analizando error con status:', status);
-        console.log('🔍 Data del error:', data);
+  logger.debug('Analizando error con status:', status);
+  logger.debug('Data del error:', data);
         
         switch (status) {
           case 400:
@@ -215,7 +216,7 @@ export const authAPI = {
         errorMessage = error.message || 'Error inesperado';
       }
 
-      console.error('💬 Mensaje de error final:', errorMessage);
+  logger.error('Mensaje de error final:', errorMessage);
 
       return {
         success: false,
@@ -226,21 +227,21 @@ export const authAPI = {
 
   login: async (credentials: UserLogin): Promise<ApiResponse<AuthResponse>> => {
     try {
-      console.log('🚀 Enviando datos de login:', credentials);
-      console.log('📡 URL:', `${API_BASE_URL}/api/user/login`);
+  logger.debug('Enviando datos de login:', credentials);
+  logger.debug('URL:', `${API_BASE_URL}/api/user/login`);
       
       const response = await api.post('/api/user/login', credentials);
-      console.log('✅ Respuesta de login exitosa:', response.data);
+  logger.info('Respuesta de login exitosa:', response.data);
       
       return {
         success: true,
         data: response.data,
       };
     } catch (error: any) {
-      console.error('❌ Error en login:', error);
-      console.error('📊 Error response:', error.response);
-      console.error('📋 Error data:', error.response?.data);
-      console.error('🔢 Status code:', error.response?.status);
+  logger.error('Error en login:', error);
+  logger.error('Error response:', error.response);
+  logger.error('Error data:', error.response?.data);
+  logger.error('Status code:', error.response?.status);
       
       let errorMessage = 'Error al iniciar sesión';
       
@@ -282,23 +283,23 @@ export const authAPI = {
 
   forgotPassword: async (email: string): Promise<ApiResponse> => {
     try {
-      console.log('📧 Enviando solicitud de recuperación de contraseña para:', email);
-      console.log('📡 URL:', `${API_BASE_URL}/api/user/forgot-password`);
+  logger.debug('Enviando solicitud de recuperación de contraseña para:', email);
+  logger.debug('URL:', `${API_BASE_URL}/api/user/forgot-password`);
       
       const response = await api.post('/api/user/forgot-password', { 
         email 
       });
       
-      console.log('✅ Solicitud de recuperación enviada exitosamente');
+  logger.info('Solicitud de recuperación enviada exitosamente');
       
       return {
         success: true,
         message: response.data?.message || 'Se ha enviado un correo con instrucciones para restablecer tu contraseña',
       };
     } catch (error: any) {
-      console.error('❌ Error en forgot password:', error);
-      console.error('📊 Error response:', error.response);
-      console.error('📋 Error data:', error.response?.data);
+  logger.error('Error en forgot password:', error);
+  logger.error('Error response:', error.response);
+  logger.error('Error data:', error.response?.data);
       
       let errorMessage = 'Error al enviar correo de recuperación';
       
@@ -337,20 +338,20 @@ export const authAPI = {
 
   resetPassword: async (token: string, newPassword: string): Promise<ApiResponse> => {
     try {
-      console.log('🔒 Enviando solicitud de reset de contraseña');
-      console.log('📡 URL:', `${API_BASE_URL}/api/user/reset-password`);
+  logger.debug('Enviando solicitud de reset de contraseña');
+  logger.debug('URL:', `${API_BASE_URL}/api/user/reset-password`);
       
       // Validación de token antes de enviar
       if (!token || token.trim() === '') {
-        console.error('❌ Token vacío o inválido:', { token, length: token?.length });
+  logger.error('Token vacío o inválido:', { token, length: token?.length });
         return {
           success: false,
           error: 'Token de recuperación inválido. Por favor, solicita un nuevo enlace de recuperación.'
         };
       }
       
-      console.log('🎫 Token recibido:', token.length > 20 ? token.substring(0, 20) + '...' : token);
-      console.log('🎫 Token length:', token.length);
+  logger.debug('Token recibido:', token.length > 20 ? token.substring(0, 20) + '...' : token);
+  logger.debug('Token length:', token.length);
       
       // Payload que coincide exactamente con la estructura del backend
       const payload = {
@@ -358,7 +359,7 @@ export const authAPI = {
         new_password: newPassword
       };
       
-      console.log('📦 Payload enviado:', { 
+      logger.debug('Payload enviado:', { 
         token: payload.token.length > 20 ? payload.token.substring(0, 20) + '...' : payload.token,
         new_password: '[HIDDEN]',
         token_length: payload.token.length 
@@ -366,16 +367,16 @@ export const authAPI = {
       
       const response = await api.post('/api/user/reset-password', payload);
       
-      console.log('✅ Contraseña restablecida exitosamente');
+  logger.info('Contraseña restablecida exitosamente');
       
       return {
         success: true,
         message: response.data?.message || 'Tu contraseña ha sido actualizada exitosamente',
       };
     } catch (error: any) {
-      console.error('❌ Error en reset password:', error);
-      console.error('📊 Error response:', error.response);
-      console.error('📋 Error data:', error.response?.data);
+  logger.error('Error en reset password:', error);
+  logger.error('Error response:', error.response);
+  logger.error('Error data:', error.response?.data);
       
       let errorMessage = 'Error al restablecer contraseña';
       
@@ -383,16 +384,16 @@ export const authAPI = {
         const status = error.response.status;
         const data = error.response.data;
         
-        console.log('🔍 Analizando error - Status:', status);
-        console.log('🔍 Analizando error - Data:', data);
-        console.log('🔍 Message from backend:', data?.message);
-        console.log('🔍 Error from backend:', data?.error);
+  logger.debug('Analizando error - Status:', status);
+  logger.debug('Analizando error - Data:', data);
+  logger.debug('Message from backend:', data?.message);
+  logger.debug('Error from backend:', data?.error);
         
         switch (status) {
           case 400:
             // Analizar el mensaje específico para determinar el tipo de error
             const backendMessage = data?.message || data?.error || '';
-            console.log('🔍 Backend message for analysis:', backendMessage);
+            logger.debug('Backend message for analysis:', backendMessage);
             
             if (backendMessage.toLowerCase().includes('already been used') || 
                 backendMessage.toLowerCase().includes('ya fue utilizado') ||
@@ -443,9 +444,9 @@ export const authAPI = {
   // Funciones de servicios
   createService: async (serviceData: ServiceData): Promise<ApiResponse<ServiceResponse>> => {
     try {
-      console.log('🚀 Creando servicio:', serviceData);
-      const response = await api.post('/api/services', serviceData);
-      console.log('✅ Servicio creado:', response.data);
+  logger.debug('Creando servicio:', serviceData);
+  const response = await api.post('/api/services', serviceData);
+  logger.info('Servicio creado:', response.data);
       
       return {
         success: true,
@@ -453,7 +454,7 @@ export const authAPI = {
         message: response.data.message,
       };
     } catch (error: any) {
-      console.error('❌ Error creando servicio:', error);
+  logger.error('Error creando servicio:', error);
       let errorMessage = 'Error al crear el servicio';
       
       if (error.response) {
@@ -487,10 +488,10 @@ export const authAPI = {
 
   updateService: async (serviceId: string, serviceData: Partial<ServiceData>): Promise<ApiResponse<ServiceResponse>> => {
     try {
-      console.log('🔄 Actualizando servicio:', serviceId);
-      console.log('📤 Datos a enviar:', JSON.stringify(serviceData, null, 2));
-      const response = await api.put(`/api/services/${serviceId}`, serviceData);
-      console.log('✅ Respuesta exitosa:', response.data);
+  logger.debug('Actualizando servicio:', serviceId);
+  logger.debug('Datos a enviar:', JSON.stringify(serviceData, null, 2));
+  const response = await api.put(`/api/services/${serviceId}`, serviceData);
+  logger.info('Respuesta exitosa:', response.data);
       
       return {
         success: true,
@@ -498,10 +499,10 @@ export const authAPI = {
         message: response.data.message,
       };
     } catch (error: any) {
-      console.error('❌ Error actualizando servicio:', error);
-      console.error('❌ Response data:', error.response?.data);
-      console.error('❌ Response status:', error.response?.status);
-      console.error('❌ Response headers:', error.response?.headers);
+  logger.error('Error actualizando servicio:', error);
+  logger.error('Response data:', error.response?.data);
+  logger.error('Response status:', error.response?.status);
+  logger.error('Response headers:', error.response?.headers);
       
       let errorMessage = 'Error al actualizar el servicio';
       
@@ -539,9 +540,9 @@ export const authAPI = {
 
   getUserServices: async (): Promise<ApiResponse<ServiceResponse[]>> => {
     try {
-      console.log('📋 Obteniendo mis servicios...');
-      const response = await api.get('/api/my-services');
-      console.log('✅ Mis servicios obtenidos:', response.data);
+  logger.debug('Obteniendo mis servicios...');
+  const response = await api.get('/api/my-services');
+  logger.info('Mis servicios obtenidos:', response.data);
       
       return {
         success: true,
@@ -549,7 +550,7 @@ export const authAPI = {
         message: response.data.message,
       };
     } catch (error: any) {
-      console.error('❌ Error obteniendo mis servicios:', error);
+  logger.error('Error obteniendo mis servicios:', error);
       let errorMessage = 'Error al obtener los servicios';
       
       if (error.response) {
@@ -582,7 +583,7 @@ export const authAPI = {
         message: response.data.message,
       };
     } catch (error: any) {
-      console.error('❌ Error obteniendo servicios:', error);
+  logger.error('Error obteniendo servicios:', error);
       let errorMessage = 'Error al obtener los servicios';
       
       if (error.response) {
@@ -601,9 +602,9 @@ export const authAPI = {
 
   getServiceById: async (serviceId: string): Promise<ApiResponse<ServiceResponse>> => {
     try {
-      console.log(`📋 Obteniendo servicio con ID: ${serviceId}...`);
-      const response = await api.get(`/api/services/${serviceId}`);
-      console.log('✅ Respuesta completa del servicio:', response.data);
+  logger.debug(`Obteniendo servicio con ID: ${serviceId}...`);
+  const response = await api.get(`/api/services/${serviceId}`);
+  logger.info('Respuesta completa del servicio:', response.data);
       
       // Verificar la estructura de la respuesta
       let serviceData;
@@ -615,7 +616,7 @@ export const authAPI = {
         serviceData = response.data;
       }
       
-      console.log('📋 Datos del servicio procesados:', serviceData);
+  logger.debug('Datos del servicio procesados:', serviceData);
       
       return {
         success: true,
@@ -623,12 +624,12 @@ export const authAPI = {
         message: response.data.message,
       };
     } catch (error: any) {
-      console.error('❌ Error obteniendo servicio por ID:', error);
+  logger.error('Error obteniendo servicio por ID:', error);
       let errorMessage = 'Error al obtener el servicio';
       
-      if (error.response) {
-        const { status, data } = error.response;
-        console.error('❌ Error response:', { status, data });
+  if (error.response) {
+  const { status, data } = error.response;
+  logger.error('❌ Error response:', { status, data });
         if (status === 404) {
           errorMessage = 'Servicio no encontrado';
         } else {
@@ -647,9 +648,9 @@ export const authAPI = {
 
   toggleServiceStatus: async (serviceId: string): Promise<ApiResponse<ServiceResponse>> => {
     try {
-      console.log('🔄 Cambiando estado del servicio:', serviceId);
-      const response = await api.patch(`/api/services/${serviceId}`);
-      console.log('✅ Estado del servicio cambiado:', response.data);
+  logger.debug('Cambiando estado del servicio:', serviceId);
+  const response = await api.patch(`/api/services/${serviceId}`);
+  logger.info('Estado del servicio cambiado:', response.data);
       
       return {
         success: true,
@@ -657,7 +658,7 @@ export const authAPI = {
         message: response.data.message,
       };
     } catch (error: any) {
-      console.error('❌ Error cambiando estado del servicio:', error);
+  logger.error('Error cambiando estado del servicio:', error);
       let errorMessage = 'Error al cambiar el estado del servicio';
       
       if (error.response) {
@@ -696,7 +697,7 @@ export const authAPI = {
         message: response.data.message,
       };
     } catch (error: any) {
-      console.error('❌ Error obteniendo categorías:', error);
+  logger.error('Error obteniendo categorías:', error);
       let errorMessage = 'Error al obtener categorías';
       
       if (error.response) {

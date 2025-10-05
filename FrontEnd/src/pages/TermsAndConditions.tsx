@@ -1,4 +1,4 @@
-import React from 'react';
+// React import not required with the automatic JSX runtime
 import { FileText, Shield, AlertCircle } from 'lucide-react';
 
 export default function TermsAndConditions() {
@@ -13,9 +13,6 @@ export default function TermsAndConditions() {
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Términos y Condiciones
           </h1>
-          <p className="text-xl text-gray-600">
-            Última actualización: 1 de enero de 2024
-          </p>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-8 space-y-8">

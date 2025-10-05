@@ -12,6 +12,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import logger from '../utils/logger';
 import { useNotifications } from '../contexts/NotificationContext';
 
 interface ConfirmDialogProps {
@@ -102,17 +103,17 @@ export default function MyServices() {
   // Cargar servicios del usuario cuando se autentica
   useEffect(() => {
     if (isAuthenticated && user && services.length === 0) {
-      console.log('📋 Cargando servicios del usuario en MyServices...');
+  logger.debug('Cargando servicios del usuario en MyServices...');
       getUserServices();
     }
   }, [isAuthenticated, user, services.length, getUserServices]);
 
   // Debug para MyServices
   useEffect(() => {
-    if (services.length > 0) {
+      if (services.length > 0) {
       const activeCount = services.filter((s: any) => s.isActive).length;
       const inactiveCount = services.filter((s: any) => !s.isActive).length;
-      console.log('🏠 MyServices Debug:', {
+      logger.debug('MyServices Debug:', {
         'Total servicios': services.length,
         'Servicios activos': activeCount,
         'Servicios inactivos': inactiveCount,
@@ -173,7 +174,7 @@ export default function MyServices() {
         });
       }
     } catch (error) {
-      console.error(`Error en ${action}:`, error);
+      logger.error(`Error en ${action}:`, error);
       addNotification({
         type: 'error',
         message: `Error inesperado al ${action === 'toggle' ? 'cambiar el estado del' : 'eliminar el'} servicio`
@@ -249,11 +250,22 @@ export default function MyServices() {
             {service.title}
           </h3>
           
-          <div className="flex items-center text-gray-600 mb-4">
-            <MapPin className="h-4 w-4 mr-1" />
-            <span className="text-sm">
-              {service.zones.map((zone: any) => zone.locality).join(', ')}
-            </span>
+          <div className="mb-4 space-y-1">
+            {service.zones && service.zones.length > 0 ? (
+              service.zones.map((zone: any, idx: number) => (
+                <div key={idx} className="flex items-center text-gray-600 text-sm">
+                  <MapPin className="h-4 w-4 mr-1 text-gray-700" />
+                  <span>
+                    {zone.neighborhood ? `${zone.neighborhood} ` : ''}({zone.locality}, {zone.province})
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="flex items-center text-gray-600 text-sm">
+                <MapPin className="h-4 w-4 mr-1 text-gray-700" />
+                <span>Zona no especificada</span>
+              </div>
+            )}
           </div>
           
           <p className={`text-sm mb-4 line-clamp-3 ${isInactive ? 'text-gray-500' : 'text-gray-700'}`}>
@@ -265,73 +277,69 @@ export default function MyServices() {
             <p className={`font-medium ${isInactive ? 'text-gray-500' : 'text-gray-900'}`}>{service.category}</p>
           </div>
           
-          <div className="flex items-center justify-between">
-            <div className="flex space-x-2">
-              {/* Solo mostrar el botón "Ver" si el servicio está activo */}
-              {service.isActive && (
-                <button
-                  onClick={() => navigate(`/service/${service.id}`)}
-                  className="flex items-center px-3 py-2 rounded-lg transition-colors bg-blue-100 text-blue-700 hover:bg-blue-200"
-                  title="Ver servicio"
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                  Ver
-                </button>
-              )}
-              
+          <div className="flex flex-wrap gap-2 justify-center">
+            {/* Solo mostrar el botón "Ver" si el servicio está activo */}
+            {service.isActive && (
               <button
-                onClick={() => navigate(`/edit-service/${service.id}`)}
-                disabled={!service.isActive}
-                className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
-                  service.isActive
-                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
-                title={service.isActive ? 'Editar servicio' : 'No se puede editar un servicio inactivo'}
+                onClick={() => navigate(`/service/${service.id}`)}
+                className="flex items-center px-3 py-2 rounded-lg transition-colors bg-blue-100 text-blue-700 hover:bg-blue-200"
+                title="Ver servicio"
               >
-                <Edit className="h-4 w-4 mr-1" />
-                Editar
+                <Eye className="h-4 w-4 mr-1" />
+                Ver
               </button>
-            </div>
+            )}
             
-            <div className="flex space-x-2">
-              <button
-                onClick={() => openConfirmDialog(
-                  'toggle',
-                  service.id,
-                  service.title
-                )}
-                disabled={loading || !service.isActive}
-                className={`flex items-center px-3 py-2 rounded-lg transition-colors disabled:opacity-50 ${
-                  loading || !service.isActive
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                }`}
-                title={service.isActive ? 'Desactivar servicio' : 'Función no disponible'}
-              >
-                {service.isActive ? (
-                  <>
-                    <EyeOff className="h-4 w-4 mr-1" />
-                    Desactivar
-                  </>
-                ) : (
-                  <>
-                    <Eye className="h-4 w-4 mr-1" />
-                    Activar
-                  </>
-                )}
-              </button>
-              
-              <button
-                onClick={() => openConfirmDialog('delete', service.id, service.title)}
-                disabled={true}
-                className="flex items-center px-3 py-2 bg-gray-200 text-gray-400 rounded-lg cursor-not-allowed transition-colors"
-                title="Función no disponible"
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Eliminar
-              </button>
-            </div>
+            <button
+              onClick={() => navigate(`/edit-service/${service.id}`)}
+              disabled={!service.isActive}
+              className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
+                service.isActive
+                  ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+              title={service.isActive ? 'Editar servicio' : 'No se puede editar un servicio inactivo'}
+            >
+              <Edit className="h-4 w-4 mr-1" />
+              Editar
+            </button>
+            
+            <button
+              onClick={() => openConfirmDialog(
+                'toggle',
+                service.id,
+                service.title
+              )}
+              disabled={loading || !service.isActive}
+              className={`flex items-center px-3 py-2 rounded-lg transition-colors disabled:opacity-50 ${
+                loading || !service.isActive
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+              }`}
+              title={service.isActive ? 'Desactivar servicio' : 'Función no disponible'}
+            >
+              {service.isActive ? (
+                <>
+                  <EyeOff className="h-4 w-4 mr-1" />
+                  Desactivar
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4 mr-1" />
+                  Activar
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={() => openConfirmDialog('delete', service.id, service.title)}
+              disabled={true}
+              className="flex items-center px-3 py-2 bg-gray-200 text-gray-400 rounded-lg cursor-not-allowed transition-colors"
+              title="Función no disponible"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Eliminar
+            </button>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Search, Filter, MapPin, Clock, Shield, Heart, X } from 'lucide-react';
+import logger from '../utils/logger';
+import { Search, Filter, MapPin, Shield, Heart, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import FiltersSidebar from '../components/FiltersSidebar';
 
@@ -32,21 +33,27 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isFavorite, onToggle
 
   return (
     <div 
-      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer transform hover:-translate-y-1"
       onClick={handleCardClick}
     >
       <div className="relative">
         <img
           src={service.image_url}
           alt={service.title}
-          className="w-full h-48 object-cover"
+          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
           onError={(e) => {
             e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Sin+Imagen';
           }}
         />
+        {/* Category badge on image (like FeaturedProviders) */}
+        <div className="absolute top-3 right-3">
+          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+            {service.category}
+          </span>
+        </div>
         <button
           onClick={handleFavoriteClick}
-          className={`absolute top-3 right-3 p-2 rounded-full transition-colors ${
+          className={`absolute top-3 left-3 p-2 rounded-full transition-colors ${
             isFavorite
               ? 'bg-red-500 text-white'
               : 'bg-white text-gray-600 hover:bg-gray-100'
@@ -55,7 +62,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isFavorite, onToggle
           <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
         </button>
         {isServicesLider && (
-          <div className="absolute top-3 left-3 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center">
+          <div className="absolute top-12 left-3 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center">
             <Shield className="h-3 w-3 mr-1" />
             Services Líder
           </div>
@@ -69,21 +76,44 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isFavorite, onToggle
           </h3>
         </div>
         
-        <p className="text-gray-600 text-sm mb-2">{service.category}</p>
-        
-        <div className="flex items-center text-gray-500 text-sm mb-3">
-          <MapPin className="h-4 w-4 mr-1" />
-          <span>{service.zones[0]?.province}, {service.zones[0]?.locality}</span>
+        <p className="text-gray-600 text-sm mb-2 line-clamp-2">{service.description}</p>
+
+        {/* Locations: like FeaturedProviders */}
+        <div className="space-y-1 mb-3">
+          {Array.isArray(service.zones) && service.zones.length > 0 ? (
+            service.zones.map((z: any, idx: number) => (
+              <div key={idx} className="flex items-center text-sm text-gray-600">
+                <MapPin className="h-4 w-4 mr-1 text-gray-400" />
+                <span>{z.locality ? `(${z.locality}, ${z.province})` : `${z.province}`}</span>
+              </div>
+            ))
+          ) : (
+            <div className="flex items-center text-sm text-gray-600">
+              <MapPin className="h-4 w-4 mr-1 text-gray-400" />
+              <span>Zona no especificada</span>
+            </div>
+          )}
         </div>
         
-        <div className="flex items-center justify-between">
+        {/* Precio + Ver detalles */}
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-base font-semibold text-gray-900">
+            Desde ${service.price?.toLocaleString('es-AR')}
+          </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/service/${service.id}`);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+          >
+            Ver detalles
+          </button>
+        </div>
+        <div>
           <span className="text-sm text-gray-600">
             <span className="font-medium">{service.providerName}</span>
           </span>
-          <div className="flex items-center text-green-600">
-            <Clock className="h-4 w-4 mr-1" />
-            <span className="text-sm font-medium">Disponible</span>
-          </div>
         </div>
       </div>
     </div>
@@ -119,11 +149,11 @@ export default function ServicesPage() {
         if (result.success && result.data) {
           setServices(result.data);
         } else {
-          console.error('❌ Error cargando servicios:', result.error);
+          logger.error('❌ Error cargando servicios:', result.error);
           setServices([]);
         }
       } catch (error) {
-        console.error('Error al cargar servicios:', error);
+        logger.error('Error al cargar servicios:', error);
         setServices([]);
       } finally {
         setLoading(false);

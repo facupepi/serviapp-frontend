@@ -63,28 +63,10 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Contact Section */}
-        <div className="border-t border-gray-800 py-8">
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="flex items-center space-x-3">
-              <Mail className="h-5 w-5 text-blue-400" />
-              <span className="text-gray-300">contacto@serviapp.com</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Phone className="h-5 w-5 text-blue-400" />
-              <span className="text-gray-300">+54 11 4567-8900</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <MapPin className="h-5 w-5 text-blue-400" />
-              <span className="text-gray-300">Buenos Aires, Argentina</span>
-            </div>
-          </div>
-        </div>
-
         {/* Bottom Footer */}
         <div className="border-t border-gray-800 py-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">
-            © 2024 ServiApp. Todos los derechos reservados.
+            © 2025 ServiApp. Todos los derechos reservados.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <Link to="/privacy-policy" className="text-gray-400 hover:text-white text-sm transition-colors">

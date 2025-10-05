@@ -1,4 +1,5 @@
 import Cookies from 'js-cookie';
+import logger from './logger';
 
 // Configuración de cookies seguras
 const COOKIE_CONFIG = {
@@ -25,17 +26,20 @@ export const tokenStorage = {
   // Guardar token en cookie segura
   setToken: (token: string): void => {
     if (!token || token === 'undefined' || token.trim().length === 0) {
-      console.error('❌ Intento de guardar token inválido:', token);
+      // Avoid logging token content
+      logger.error('Intento de guardar token inválido');
       return;
     }
     
-    console.log('💾 Guardando token en cookies:', token);
+    // Do not log sensitive token contents; just indicate action
     const config = isProduction ? COOKIE_CONFIG : DEV_COOKIE_CONFIG;
     Cookies.set('authToken', token, config);
     
-    // Verificar que se guardó correctamente
+    // Optionally verify that it was saved
     const savedToken = Cookies.get('authToken');
-    console.log('✅ Token verificado en cookies:', savedToken);
+    if (!savedToken) {
+      logger.error('Error al guardar token en cookies');
+    }
   },
 
   // Obtener token de cookie
@@ -67,7 +71,7 @@ export const userStorage = {
       const userData = localStorage.getItem('userData');
       return userData ? JSON.parse(userData) : null;
     } catch (error) {
-      console.error('Error parsing user data:', error);
+      logger.error('Error parsing user data:', error);
       return null;
     }
   },

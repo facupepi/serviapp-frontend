@@ -1,4 +1,4 @@
-import React from 'react';
+// React import not required with the new JSX runtime
 import { Shield, Eye, Lock, Database } from 'lucide-react';
 
 export default function PrivacyPolicy() {
@@ -13,9 +13,6 @@ export default function PrivacyPolicy() {
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Política de Privacidad
           </h1>
-          <p className="text-xl text-gray-600">
-            Última actualización: 1 de enero de 2024
-          </p>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-8 space-y-8">

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
+import logger from '../utils/logger';
 import { getProvinces, getLocalitiesObject } from '../data/argentina';
 
 interface AvailabilityDay {
@@ -72,7 +73,6 @@ export default function EditService() {
   // Convertir datos del servicio al formato del formulario
   const initializeFormData = useCallback((): FormData => {
     if (!serviceData) {
-      // Return default form data if serviceData is not loaded yet
       return {
         title: '',
         category: '',
@@ -92,6 +92,23 @@ export default function EditService() {
       };
     }
 
+    // Soportar claves numéricas y de día
+    const dayMap: Record<string, keyof FormData['availability']> = {
+      '0': 'monday',
+      '1': 'tuesday',
+      '2': 'wednesday',
+      '3': 'thursday',
+      '4': 'friday',
+      '5': 'saturday',
+      '6': 'sunday',
+      monday: 'monday',
+      tuesday: 'tuesday',
+      wednesday: 'wednesday',
+      thursday: 'thursday',
+      friday: 'friday',
+      saturday: 'saturday',
+      sunday: 'sunday',
+    };
     const availabilityMap: FormData['availability'] = {
       monday: { enabled: false, timeSlots: [] },
       tuesday: { enabled: false, timeSlots: [] },
@@ -101,21 +118,30 @@ export default function EditService() {
       saturday: { enabled: false, timeSlots: [] },
       sunday: { enabled: false, timeSlots: [] },
     };
-
-    // Convertir availability del servicio al formato del formulario
     if (serviceData.availability) {
-      Object.entries(serviceData.availability).forEach(([day, schedule]: [string, any]) => {
-        const dayKey = day as keyof FormData['availability'];
-        if (availabilityMap[dayKey]) {
-          // Si el día tiene horarios definidos (start y end)
-          if (schedule && schedule.start && schedule.end) {
-            availabilityMap[dayKey] = {
-              enabled: true,
-              timeSlots: [{ start: schedule.start, end: schedule.end }]
-            };
-          }
-          // Si el día tiene available: false, mantenerlo deshabilitado
-          else if (schedule && schedule.available === false) {
+      Object.entries(serviceData.availability).forEach(([key, schedule]: [string, any]) => {
+        // Si la clave es numérica y el objeto tiene 'day', usar ese valor
+        let dayKey: keyof FormData['availability'] | undefined = undefined;
+        if (!isNaN(Number(key)) && schedule && typeof schedule.day === 'string') {
+          dayKey = schedule.day.toLowerCase() as keyof FormData['availability'];
+        } else {
+          dayKey = dayMap[key];
+        }
+        if (!dayKey) return;
+        // Si ya hay timeSlots válidos, no sobrescribir con available: false
+        if (Array.isArray(schedule.timeSlots) && schedule.timeSlots.length > 0) {
+          availabilityMap[dayKey] = {
+            enabled: true,
+            timeSlots: schedule.timeSlots.map((slot: any) => ({ start: slot.start, end: slot.end }))
+          };
+        } else if (schedule && schedule.start && schedule.end) {
+          availabilityMap[dayKey] = {
+            enabled: true,
+            timeSlots: [{ start: schedule.start, end: schedule.end }]
+          };
+        } else if (schedule && schedule.available === false) {
+          // Solo poner available: false si no hay timeSlots ya definidos
+          if (!availabilityMap[dayKey].enabled || availabilityMap[dayKey].timeSlots.length === 0) {
             availabilityMap[dayKey] = {
               enabled: false,
               timeSlots: []
@@ -124,7 +150,6 @@ export default function EditService() {
         }
       });
     }
-
     const initialData = {
       title: serviceData.title || '',
       category: serviceData.category || '',
@@ -134,15 +159,6 @@ export default function EditService() {
       zones: serviceData.zones || [],
       availability: availabilityMap
     };
-
-    console.log('🏠 Inicializando formulario con datos del servicio:', {
-      serviceData: serviceData,
-      initialData: initialData,
-      priceOriginal: serviceData.price,
-      priceConverted: Number(serviceData.price),
-      priceType: typeof initialData.price
-    });
-
     return initialData;
   }, [serviceData]);
 
@@ -152,36 +168,22 @@ export default function EditService() {
       title: data.title,
       category: data.category,
       description: data.description,
-      price: Number(data.price), // Asegurar que sea un número
+      price: Number(data.price),
       image: data.image,
       zones: data.zones,
       availability: {}
     };
-
-    // Transformar availability del formato del formulario al formato del backend
-    for (const day in data.availability) {
-      const dayData = data.availability[day as keyof typeof data.availability];
+    // Solo enviar claves de día, y si hay timeSlots, usar timeSlots, si no, available: false
+    (Object.keys(data.availability) as Array<keyof typeof data.availability>).forEach((day) => {
+      const dayData = data.availability[day];
       if (dayData.enabled && dayData.timeSlots.length > 0) {
-        // Día con horarios disponibles
         transformed.availability[day] = {
-          start: dayData.timeSlots[0].start,
-          end: dayData.timeSlots[0].end
+          timeSlots: dayData.timeSlots.map(slot => ({ start: slot.start, end: slot.end }))
         };
       } else {
-        // Día no disponible
-        transformed.availability[day] = {
-          available: false
-        };
+        transformed.availability[day] = { available: false };
       }
-    }
-
-    console.log('🔄 Transformando datos para API:', {
-      original: data,
-      transformed: transformed,
-      priceType: typeof transformed.price,
-      priceValue: transformed.price
     });
-
     return transformed;
   };
   
@@ -423,7 +425,8 @@ export default function EditService() {
       // Usar la función de transformación para obtener el formato correcto
       const transformedData = transformDataForAPI(formData);
       
-      console.log('📋 Datos transformados para enviar al backend:', transformedData);
+  // Use logger for debug info
+  logger.debug('Datos transformados para enviar al backend:', transformedData);
 
       const result = await updateService(serviceId!, transformedData);
       

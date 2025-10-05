@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   User, 
@@ -11,6 +11,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import logger from '../utils/logger';
 
 interface QuickActionCardProps {
   icon: React.ReactNode;
@@ -73,7 +74,7 @@ export default function Dashboard() {
   useEffect(() => {
     // Solo redirigir si no está cargando y no está autenticado
     if (!loading && (!isAuthenticated || !user)) {
-      console.log('🔄 Redirigiendo a login - no autenticado');
+      logger.info('Redirigiendo a login - no autenticado');
       navigate('/login');
     }
   }, [loading, isAuthenticated, user, navigate]);
@@ -81,7 +82,7 @@ export default function Dashboard() {
   // Cargar servicios del usuario cuando se autentica
   useEffect(() => {
     if (isAuthenticated && user && services.length === 0) {
-      console.log('📋 Cargando servicios del usuario en Dashboard...');
+  logger.debug('Cargando servicios del usuario en Dashboard...');
       getUserServices();
     }
   }, [isAuthenticated, user, services.length, getUserServices]);
@@ -112,7 +113,7 @@ export default function Dashboard() {
   };
 
   // Debug para el Dashboard
-  console.log('🎯 Dashboard Debug:', {
+  logger.debug('Dashboard Debug:', {
     'Total servicios': services.length,
     'Servicios activos': userStats.activeServices,
     'Servicios inactivos': userStats.inactiveServices,
@@ -170,6 +171,13 @@ export default function Dashboard() {
     }
   ];
 
+  const getStatusClass = (status: string) =>
+    status === 'pending'
+      ? 'bg-yellow-100 text-yellow-800'
+      : status === 'accepted'
+      ? 'bg-green-100 text-green-800'
+      : 'bg-red-100 text-red-800';
+
   const statsConfig = [
     {
       icon: <Clock className="h-6 w-6 text-white" />,
@@ -220,17 +228,24 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header de bienvenida */}
         <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-              <User className="h-6 w-6 text-white" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                <User className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">¡Hola, {user.name}! 👋</h1>
+                <p className="text-gray-600">Bienvenido a tu panel de control de ServiApp</p>
+              </div>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                ¡Hola, {user.name}! 👋
-              </h1>
-              <p className="text-gray-600">
-                Bienvenido a tu panel de control de ServiApp
-              </p>
+              <button
+                onClick={() => navigate('/offer-service')}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Nuevo Servicio
+              </button>
             </div>
           </div>
         </div>
@@ -249,7 +264,7 @@ export default function Dashboard() {
         </div>
 
         {/* Acciones rápidas */}
-        <div className="mb-8">
+          <div className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Acciones Rápidas</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {allActions.map((action, index) => (
@@ -279,15 +294,8 @@ export default function Dashboard() {
                       <p className="font-medium text-gray-900">{request.serviceName}</p>
                       <p className="text-sm text-gray-600">{request.date} - {request.time}</p>
                     </div>
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      request.status === 'pending' 
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : request.status === 'accepted'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {request.status === 'pending' ? 'Pendiente' : 
-                       request.status === 'accepted' ? 'Aceptada' : 'Rechazada'}
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(request.status)}`}>
+                      {request.status === 'pending' ? 'Pendiente' : request.status === 'accepted' ? 'Aceptada' : 'Rechazada'}
                     </span>
                   </div>
                 ))}
@@ -314,15 +322,8 @@ export default function Dashboard() {
                       <p className="font-medium text-gray-900">{request.serviceName}</p>
                       <p className="text-sm text-gray-600">De: {request.userName}</p>
                     </div>
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      request.status === 'pending' 
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : request.status === 'accepted'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {request.status === 'pending' ? 'Pendiente' : 
-                       request.status === 'accepted' ? 'Aceptada' : 'Rechazada'}
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(request.status)}`}>
+                      {request.status === 'pending' ? 'Pendiente' : request.status === 'accepted' ? 'Aceptada' : 'Rechazada'}
                     </span>
                   </div>
                 ))}

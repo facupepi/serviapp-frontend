@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authAPI, UserRegister as BackendUserRegister } from '../api/auth';
 import { tokenStorage, userStorage } from '../utils/storage';
+import logger from '../utils/logger';
 
 interface User {
   id: string;
@@ -157,6 +158,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [isBlocked, setIsBlocked] = useState(false);
 
+  // Limpiar datos derivados del usuario cuando cambia el usuario (evita datos cacheados de otro usuario)
+  useEffect(() => {
+    setServices([]);
+    setUserRequests([]);
+    setProviderRequests([]);
+    // Nota: no tocamos categories (globales) ni loading aquí
+  }, [user?.id]);
+
   useEffect(() => {
     // Prevenir múltiples inicializaciones usando flag global
     if (authContextInitialized) {
@@ -197,11 +206,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           createdAt: new Date().toISOString()
         };
         
-        setUser(basicUser);
-        userStorage.setUser(basicUser);
-        console.log('✅ Usuario básico creado desde token:', basicUser);
+  setUser(basicUser);
+  userStorage.setUser(basicUser);
+  logger.info('Usuario básico creado desde token:', basicUser);
       } catch (error) {
-        console.error('❌ Error decodificando token:', error);
+  logger.error('Error decodificando token:', error);
         tokenStorage.removeToken();
       }
     } else if (!token && userData) {
@@ -249,7 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.success && response.data) {
         setCategories(response.data);
       } else {
-        console.error('❌ Error cargando categorías:', response.error);
+        logger.error('❌ Error cargando categorías:', response.error);
         // Usar categorías por defecto en caso de error
         setCategories([
           'Limpieza', 'Jardinería', 'Plomería', 'Electricidad', 'Carpintería', 
@@ -259,7 +268,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ]);
       }
     } catch (error) {
-      console.error('❌ Error cargando categorías:', error);
+      logger.error('❌ Error cargando categorías:', error);
       // Usar categorías por defecto en caso de error
       setCategories([
         'Limpieza', 'Jardinería', 'Plomería', 'Electricidad', 'Carpintería', 
@@ -276,7 +285,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'Demasiados intentos fallidos. Intenta nuevamente en 10 minutos.' };
       }
 
-      console.log('🔐 Iniciando proceso de login...');
+  logger.debug('Iniciando proceso de login...');
 
       // Llamar a la API del backend
       const response = await authAPI.login({ email, password });
@@ -286,20 +295,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (response.data.token) {
           tokenStorage.setToken(response.data.token);
         } else {
-          console.warn('⚠️ No se recibió token del backend en login');
+          logger.warn('⚠️ No se recibió token del backend en login');
         }
         
         // Guardar datos del usuario
         if (response.data.user) {
           userStorage.setUser(response.data.user);
         } else {
-          console.warn('⚠️ No se recibieron datos del usuario del backend en login');
+          logger.warn('⚠️ No se recibieron datos del usuario del backend en login');
         }
         
         localStorage.removeItem('loginAttempts');
         
         // Si el backend envió datos del usuario, usarlos; si no, crear un usuario básico
-        let loggedUser: User;
+  let loggedUser: User;
         
         if (response.data.user) {
           // Mapear datos del backend a nuestro formato local
@@ -321,7 +330,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
         } else {
           // Crear usuario básico si el backend no envió datos completos
-          console.log('🔧 Creando usuario básico desde token...');
+          logger.debug('Creando usuario básico desde token...');
           try {
             // Decodificar el payload del JWT para obtener información más precisa
             const payload = JSON.parse(atob(response.data.token.split('.')[1]));
@@ -342,7 +351,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               createdAt: new Date().toISOString()
             };
           } catch (error) {
-            console.error('❌ Error decodificando token:', error);
+            logger.error('❌ Error decodificando token:', error);
             loggedUser = {
               id: 'unknown',
               name: email.split('@')[0],
@@ -366,7 +375,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(loggedUser);
         userStorage.setUser(loggedUser);
         setLoginAttempts(0);
-        console.log('✅ Login exitoso, usuario guardado:', loggedUser.email);
+  logger.info('Login exitoso, usuario guardado:', loggedUser.email);
         return { success: true };
       } else {
         // Manejo de intentos fallidos
@@ -390,10 +399,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: response.error || 'Credenciales incorrectas' };
       }
     } catch (error: any) {
-      console.error('❌ Error completo en login:', error);
-      console.error('❌ Error tipo:', typeof error);
-      console.error('❌ Error message:', error?.message);
-      console.error('❌ Error response:', error?.response);
+      logger.error('❌ Error completo en login:', error);
+      logger.error('❌ Error tipo:', typeof error);
+      logger.error('❌ Error message:', error?.message);
+      logger.error('❌ Error response:', error?.response);
       
       // Si es un error de axios que ya fue procesado, usar el mensaje del authAPI
       if (error?.response?.status) {
@@ -501,25 +510,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         backendUserData.phone = userData.phone.trim();
       }
 
-      console.log('🔍 Datos que se enviarán al backend:', backendUserData);
+    logger.debug('Datos que se enviarán al backend:', backendUserData);
 
       // Llamar a la API del backend
       const response = await authAPI.register(backendUserData);
       
-      console.log('🎯 Respuesta completa del backend:', response);
-      console.log('🔑 Token en respuesta:', response.data?.token);
-      console.log('👤 Usuario en respuesta:', response.data?.user);
+  logger.debug('Respuesta completa del backend:', response);
+  logger.debug('Token en respuesta:', response.data?.token);
+  logger.debug('Usuario en respuesta:', response.data?.user);
 
       if (response.success && response.data) {
         // Verificar que el token existe antes de guardarlo
         if (response.data.token) {
           tokenStorage.setToken(response.data.token);
-          console.log('✅ Token guardado exitosamente:', response.data.token);
+          logger.info('Token guardado exitosamente');
           
           // Guardar datos del usuario
           if (response.data.user) {
             userStorage.setUser(response.data.user);
-            console.log('✅ Usuario guardado exitosamente:', response.data.user);
+            logger.info('Usuario guardado exitosamente');
           }
           
           // Mapear datos del backend a nuestro formato local
@@ -544,7 +553,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { success: true };
           
         } else {
-          console.warn('⚠️ No se recibió token del backend - registro exitoso pero sin autenticación automática');
+          logger.warn && logger.warn('No se recibió token del backend - registro exitoso pero sin autenticación automática');
           
           // El registro fue exitoso pero sin token
           // El usuario tendrá que hacer login por separado
@@ -558,32 +567,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: response.error || 'Error al registrarse' };
       }
     } catch (error: any) {
-      console.error('Error en registro:', error);
+      logger.error('Error en registro:', error);
       return { success: false, error: 'Error de conexión. Verifica tu internet e intenta nuevamente.' };
     }
   };
 
   const forgotPassword = async (email: string): Promise<{ success: boolean; error?: string; message?: string }> => {
     try {
-      console.log('📧 Enviando solicitud de recuperación para:', email);
+  logger.debug('Enviando solicitud de recuperación para:', email);
       
       const response = await authAPI.forgotPassword(email);
       
       if (response.success) {
-        console.log('✅ Solicitud de recuperación enviada exitosamente');
+  logger.info('Solicitud de recuperación enviada exitosamente');
         return {
           success: true,
           message: response.message
         };
       } else {
-        console.error('❌ Error en forgot password:', response.error);
+  logger.error('Error en forgot password:', response.error);
         return {
           success: false,
           error: response.error
         };
       }
     } catch (error: any) {
-      console.error('Error en forgot password:', error);
+  logger.error('Error en forgot password:', error);
       return { success: false, error: 'Error de conexión. Verifica tu internet e intenta nuevamente.' };
     }
   };
@@ -607,26 +616,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'La contraseña debe contener al menos un número' };
       }
 
-      console.log('🔒 Iniciando reset de contraseña...');
+  logger.debug('Iniciando reset de contraseña...');
       
       // Usar la nueva API que coincide con el backend
       const response = await authAPI.resetPassword(token, password);
       
       if (response.success) {
-        console.log('✅ Contraseña restablecida exitosamente');
+  logger.info('Contraseña restablecida exitosamente');
         return {
           success: true,
           message: response.message
         };
       } else {
-        console.error('❌ Error al restablecer contraseña:', response.error);
+  logger.error('Error al restablecer contraseña:', response.error);
         return {
           success: false,
           error: response.error || 'Error al restablecer la contraseña'
         };
       }
     } catch (error: any) {
-      console.error('Error en reset password:', error);
+  logger.error('Error en reset password:', error);
       return { success: false, error: 'Error de conexión. Verifica tu internet e intenta nuevamente.' };
     }
   };
@@ -703,6 +712,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const respondToRequest = async (requestId: string, action: 'accept' | 'reject', rejectionReason?: string): Promise<{ success: boolean; error?: string }> => {
     try {
+
       setProviderRequests(prev => prev.map(request =>
         request.id === requestId
           ? {
@@ -758,7 +768,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Simulación de guardado de reseña
-      console.log('Review submitted:', { serviceRequestId, rating, comment });
+  logger.info('Review submitted:', { serviceRequestId, rating, comment });
       return { success: true };
     } catch (error) {
       return { success: false, error: 'Error del servidor' };
@@ -805,14 +815,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authAPI.createService(backendServiceData);
       
       if (response.success && response.data) {
-        console.log('✅ Servicio creado exitosamente:', response.data);
+  logger.info('Servicio creado exitosamente:', response.data);
         // Aquí podrías actualizar el estado local si es necesario
         return { success: true };
       } else {
         return { success: false, error: response.error || 'Error desconocido' };
       }
     } catch (error) {
-      console.error('❌ Error en createService:', error);
+  logger.error('Error en createService:', error);
       return { success: false, error: 'Error del servidor' };
     }
   };
@@ -823,7 +833,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'Debes estar autenticado para editar servicios' };
       }
 
-      console.log('🔄 Datos de entrada updateService:', serviceData);
+  logger.debug('Datos de entrada updateService:', serviceData);
 
       // Mapear datos del frontend al formato del backend
       const backendServiceData: any = {
@@ -852,14 +862,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         image_url: serviceData.image
       };
 
-      console.log('📤 Datos enviados al backend:', backendServiceData);
+  logger.debug('Datos enviados al backend:', backendServiceData);
 
       const response = await authAPI.updateService(serviceId, backendServiceData);
       
-      console.log('📥 Respuesta del backend:', response);
+  logger.debug('Respuesta del backend:', response);
 
       if (response.success && response.data) {
-        console.log('✅ Servicio actualizado exitosamente:', response.data);
+  logger.info('Servicio actualizado exitosamente:', response.data);
         
         // Actualizar estado local si es necesario
         setServices(prevServices => 
@@ -881,11 +891,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         return { success: true };
       } else {
-        console.error('❌ Error del backend al actualizar servicio:', response);
+  logger.error('Error del backend al actualizar servicio:', response);
         return { success: false, error: response.error || 'Error desconocido' };
       }
     } catch (error) {
-      console.error('❌ Error en updateService:', error);
+  logger.error('Error en updateService:', error);
       return { success: false, error: 'Error del servidor' };
     }
   };
@@ -896,15 +906,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'Debes estar autenticado para obtener tus servicios' };
       }
 
-      console.log('📋 Obteniendo mis servicios...');
+      logger.debug('Obteniendo mis servicios...');
       const response = await authAPI.getUserServices();
       
       if (response.success && response.data) {
-        console.log('✅ Mis servicios obtenidos:', response.data);
+        logger.info('Mis servicios obtenidos');
         
         // Log para debug: ver qué status recibimos
         response.data.forEach((service: any, index: number) => {
-          console.log(`🔍 Servicio ${index + 1}: "${service.title}" - Status: "${service.status}"`);
+          logger.debug(`Servicio ${index + 1}: "${service.title}" - Status: "${service.status}"`);
         });
         
         // Mapear ServiceResponse[] a Service[] y actualizar el estado
@@ -928,20 +938,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             createdAt: serviceResponse.created_at || new Date().toISOString()
           };
           
-          console.log(`🔄 Mapeado "${mappedService.title}": status="${serviceResponse.status}" → isActive=${mappedService.isActive}`);
+          logger.debug(`Mapeado "${mappedService.title}": status="${serviceResponse.status}" → isActive=${mappedService.isActive}`);
           return mappedService;
         });
         
         setServices(mappedServices);
         const activeCount = mappedServices.filter(s => s.isActive).length;
-        console.log(`✅ Servicios actualizados en el estado: ${mappedServices.length} total, ${activeCount} activos`);
+  logger.info(`Servicios actualizados en el estado: ${mappedServices.length} total, ${activeCount} activos`);
         
         return { success: true, data: response.data };
       } else {
         return { success: false, error: response.error || 'Error al obtener servicios' };
       }
-    } catch (error) {
-      console.error('❌ Error en getUserServices:', error);
+      } catch (error) {
+      logger.error('Error en getUserServices:', error);
       return { success: false, error: 'Error del servidor' };
     }
   }, [user?.id, user?.name, user?.avatar]); // Incluir dependencias necesarias para el mapeo
@@ -955,8 +965,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         return { success: false, error: response.error || 'Error al obtener servicios' };
       }
-    } catch (error) {
-      console.error('❌ Error en getServices:', error);
+      } catch (error) {
+      logger.error('Error en getServices:', error);
       return { success: false, error: 'Error del servidor' };
     }
   }, []);
@@ -966,13 +976,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authAPI.getServiceById(serviceId);
       
       if (response.success && response.data) {
-        console.log('✅ Servicio obtenido por ID:', response.data);
+        logger.info('Servicio obtenido por ID');
         return { success: true, data: response.data };
       } else {
         return { success: false, error: response.error || 'Error al obtener el servicio' };
       }
     } catch (error) {
-      console.error('❌ Error en getServiceById:', error);
+      logger.error('Error en getServiceById:', error);
       return { success: false, error: 'Error del servidor' };
     }
   }, []);
@@ -982,14 +992,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authAPI.getCategories();
       
       if (response.success && response.data) {
-        console.log('✅ Categorías obtenidas:', response.data);
+        logger.info('Categorías obtenidas');
         setCategories(response.data);
         return { success: true, data: response.data };
       } else {
         return { success: false, error: response.error || 'Error al obtener categorías' };
       }
     } catch (error) {
-      console.error('❌ Error en getCategories:', error);
+      logger.error('Error en getCategories:', error);
       return { success: false, error: 'Error del servidor' };
     }
   }, []);
@@ -1003,13 +1013,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authAPI.toggleServiceStatus(serviceId);
       
       if (response.success) {
-        console.log('✅ Estado del servicio cambiado:', response.data || 'Sin datos adicionales');
+        logger.info('Estado del servicio cambiado');
         
         // Actualizar estado local si es necesario
         // Nota: Como no sabemos el nuevo estado exacto del backend, refrescar los servicios
         const userServicesResponse = await authAPI.getUserServices();
         if (userServicesResponse.success && userServicesResponse.data) {
-          console.log('🔄 Refrescando servicios después de toggle...');
+          logger.debug('Refrescando servicios después de toggle...');
           
           // Mapear ServiceResponse[] a Service[]
           const mappedServices: Service[] = userServicesResponse.data.map((serviceResponse: any) => {
@@ -1033,7 +1043,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             };
             
             if (serviceResponse.id.toString() === serviceId) {
-              console.log(`🎯 Servicio toggleado "${mappedService.title}": status="${serviceResponse.status}" → isActive=${mappedService.isActive}`);
+              logger.debug(`Servicio toggleado "${mappedService.title}": status="${serviceResponse.status}" → isActive=${mappedService.isActive}`);
             }
             
             return mappedService;
@@ -1041,7 +1051,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           setServices(mappedServices);
           const activeCount = mappedServices.filter(s => s.isActive).length;
-          console.log(`✅ Servicios refrescados: ${mappedServices.length} total, ${activeCount} activos`);
+          logger.info(`Servicios refrescados: ${mappedServices.length} total, ${activeCount} activos`);
         }
         
         return { success: true };
@@ -1049,7 +1059,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: response.error || 'Error al cambiar estado del servicio' };
       }
     } catch (error) {
-      console.error('❌ Error en toggleServiceStatus:', error);
+      logger.error('Error en toggleServiceStatus:', error);
       return { success: false, error: 'Error del servidor' };
     }
   };
@@ -1069,7 +1079,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         )
       );
 
-      console.log('Service deactivated:', serviceId);
+  logger.info('Service deactivated:', serviceId);
       return { success: true };
     } catch (error) {
       return { success: false, error: 'Error del servidor' };
@@ -1091,7 +1101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         )
       );
 
-      console.log('Service reactivated:', serviceId);
+  logger.info('Service reactivated:', serviceId);
       return { success: true };
     } catch (error) {
       return { success: false, error: 'Error del servidor' };
@@ -1111,7 +1121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         )
       );
 
-      console.log('Service deleted:', serviceId);
+  logger.info('Service deleted:', serviceId);
       return { success: true };
     } catch (error) {
       return { success: false, error: 'Error del servidor' };
@@ -1121,6 +1131,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     userStorage.clearAll();
     setUser(null);
+    // Limpiar todo el estado relacionado al usuario al cerrar sesión
+    setServices([]);
+    setUserRequests([]);
+    setProviderRequests([]);
+    setFavorites([]);
+    setLoginAttempts(0);
+    setIsBlocked(false);
   };
 
   const value: AuthContextType = {

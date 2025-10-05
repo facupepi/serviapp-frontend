@@ -269,6 +269,7 @@ export default function OfferService() {
         title: formData.title,
         description: formData.description,
         category: formData.category,
+        price: formData.price, // Include price so backend receives it
         zones: formData.zones,
         availability,
         image: formData.image || 'https://via.placeholder.com/300x200?text=Servicio'
@@ -354,7 +355,7 @@ export default function OfferService() {
           />
         </div>
         <p className="text-sm text-gray-500 mt-1">
-          Precio estimado por hora o por servicio completo
+          Precio estimado por servicio completo
         </p>
         {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
       </div>

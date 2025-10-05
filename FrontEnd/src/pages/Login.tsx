@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import logger from '../utils/logger';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ export default function Login() {
   // Redirigir si el usuario ya está autenticado
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
-      console.log('✅ Usuario ya autenticado, redirigiendo al dashboard');
+      logger.info('Usuario ya autenticado, redirigiendo al dashboard');
       navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, user, authLoading, navigate]);
@@ -95,12 +96,12 @@ export default function Login() {
         } else {
           setErrors({ form: result.error || 'Error al iniciar sesión' });
         }
-      } catch (loginError) {
-        console.error('Error en llamada login:', loginError);
+        } catch (loginError) {
+        logger.error('Error en llamada login:', loginError);
         setErrors({ form: 'Error de comunicación con el servidor' });
       }
     } catch (outerError) {
-      console.error('Error externo en performLogin:', outerError);
+      logger.error('Error externo en performLogin:', outerError);
       setErrors({ form: 'Error inesperado del sistema' });
     } finally {
       setLoading(false);
@@ -117,7 +118,7 @@ export default function Login() {
     try {
       performLogin();
     } catch (error) {
-      console.error('Error en handleLoginClick:', error);
+      logger.error('Error en handleLoginClick:', error);
       setErrors({ form: 'Error inesperado al procesar login' });
       setLoading(false);
     }
@@ -134,7 +135,7 @@ export default function Login() {
       try {
         performLogin();
       } catch (error) {
-        console.error('Error en handleKeyPress:', error);
+        logger.error('Error en handleKeyPress:', error);
         setErrors({ form: 'Error inesperado al procesar login' });
         setLoading(false);
       }

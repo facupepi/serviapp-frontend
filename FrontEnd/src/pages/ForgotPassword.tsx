@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import logger from '../utils/logger';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -36,14 +37,14 @@ export default function ForgotPassword() {
     try {
       const result = await forgotPassword(email);
       if (result.success) {
-        console.log('✅ Solicitud de recuperación exitosa:', result.message);
+        logger.info('Solicitud de recuperación exitosa');
         setSubmitted(true);
       } else {
-        console.error('❌ Error en forgot password:', result.error);
+        logger.error('Error en forgot password:', result.error);
         setError(result.error || 'Error al procesar la solicitud');
       }
     } catch (error) {
-      console.error('Error inesperado en forgot password:', error);
+      logger.error('Error inesperado en forgot password:', error);
       setError('Error del servidor. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
