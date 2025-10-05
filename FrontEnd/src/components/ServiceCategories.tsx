@@ -72,11 +72,7 @@ const categoryColors: { [key: string]: string } = {
 export default function ServiceCategories() {
   const navigate = useNavigate();
   const { categories } = useAuth();
-
-  // Debug: Verificar las categorías
-  console.log('🔍 ServiceCategories - Categorías recibidas:', categories);
-  console.log('🔍 ServiceCategories - Número de categorías:', categories?.length);
-  console.log('🔍 ServiceCategories - Tipo de categories:', typeof categories);
+  // Nota: logs de debug removidos para evitar ruido en consola
 
   // Función para obtener icono de categoría
   const getCategoryIcon = (category: string) => {
@@ -117,7 +113,6 @@ export default function ServiceCategories() {
 
   // No mostrar nada si las categorías aún no están cargadas
   if (!categories || !Array.isArray(categories) || categories.length === 0) {
-    console.log('🔍 ServiceCategories - Mostrando skeleton, categorías:', categories);
     return (
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -140,8 +135,6 @@ export default function ServiceCategories() {
       </section>
     );
   }
-
-  console.log('🔍 ServiceCategories - Renderizando grid con categorías:', categories);
 
   return (
     <section className="py-16 bg-white">

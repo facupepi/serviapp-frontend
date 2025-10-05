@@ -574,9 +574,7 @@ export const authAPI = {
 
   getServices: async (): Promise<ApiResponse<ServiceResponse[]>> => {
     try {
-      console.log('📋 Obteniendo servicios públicos...');
       const response = await api.get('/api/services');
-      console.log('✅ Servicios públicos obtenidos:', response.data);
       
       return {
         success: true,
@@ -690,9 +688,7 @@ export const authAPI = {
 
   getCategories: async (): Promise<ApiResponse<string[]>> => {
     try {
-      console.log('🔄 Obteniendo categorías desde el backend...');
       const response = await api.get('/api/categories');
-      console.log('✅ Categorías obtenidas:', response.data);
       
       return {
         success: true,

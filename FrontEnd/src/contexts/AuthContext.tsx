@@ -153,24 +153,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRequests, setUserRequests] = useState<ServiceRequest[]>([]);
   const [providerRequests, setProviderRequests] = useState<ServiceRequest[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [categories, setCategories] = useState<string[]>([
-    'Limpieza', 'Jardinería', 'Plomería', 'Electricidad', 'Carpintería', 
-    'Pintura', 'Mecánica', 'Tecnología', 'Educación', 'Salud', 'Belleza', 
-    'Mascotas', 'Transporte', 'Eventos', 'Fotografía', 'Cocina', 'Fitness', 
-    'Música', 'Idiomas', 'Otros'
-  ]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [isBlocked, setIsBlocked] = useState(false);
 
   useEffect(() => {
     // Prevenir múltiples inicializaciones usando flag global
     if (authContextInitialized) {
-      console.log('⚠️ AuthContext ya inicializado globalmente, saltando...');
       setLoading(false);
       return;
     }
     
-    console.log('🔄 Inicializando AuthContext...');
     authContextInitialized = true;
     
     // Verificar si hay un token guardado al cargar la app
@@ -180,18 +173,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const attempts = localStorage.getItem('loginAttempts');
     const blockTime = localStorage.getItem('blockTime');
     
-    console.log('🔄 Datos encontrados:', {
-      hasToken: !!token,
-      hasUserData: !!userData,
-      tokenLength: token?.length || 0
-    });
-    
     if (token && userData) {
       setUser(userData);
-      console.log('✅ Usuario restaurado desde storage:', userData.email);
     } else if (token && !userData) {
       // Si hay token pero no datos del usuario, crear usuario básico
-      console.log('🔧 Token existe pero no hay datos de usuario, creando usuario básico...');
       try {
         // Decodificar el payload del JWT para obtener información básica
         const payload = JSON.parse(atob(token.split('.')[1]));
@@ -221,10 +206,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } else if (!token && userData) {
       // Si no hay token pero hay datos, limpiar datos
-      console.log('⚠️ Hay datos de usuario pero no token, limpiando datos');
       userStorage.removeUser();
     } else {
-      console.log('ℹ️ No hay token ni datos de usuario guardados');
+      // No hay token ni datos
     }
     
     if (savedFavorites) {
@@ -252,7 +236,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     
-    console.log('✅ AuthContext inicialización completada, loading = false');
     setLoading(false);
     
     // Cargar categorías del backend
@@ -265,7 +248,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authAPI.getCategories();
       if (response.success && response.data) {
         setCategories(response.data);
-        console.log('✅ Categorías cargadas:', response.data);
       } else {
         console.error('❌ Error cargando categorías:', response.error);
         // Usar categorías por defecto en caso de error
@@ -964,12 +946,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id, user?.name, user?.avatar]); // Incluir dependencias necesarias para el mapeo
 
-  const getServices = async (): Promise<{ success: boolean; data?: any[]; error?: string }> => {
+  const getServices = useCallback(async (): Promise<{ success: boolean; data?: any[]; error?: string }> => {
     try {
       const response = await authAPI.getServices();
       
       if (response.success && response.data) {
-        console.log('✅ Servicios públicos obtenidos:', response.data);
         return { success: true, data: response.data };
       } else {
         return { success: false, error: response.error || 'Error al obtener servicios' };
@@ -978,7 +959,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('❌ Error en getServices:', error);
       return { success: false, error: 'Error del servidor' };
     }
-  };
+  }, []);
 
   const getServiceById = useCallback(async (serviceId: string): Promise<{ success: boolean; data?: any; error?: string }> => {
     try {

@@ -14,29 +14,13 @@ export default function FeaturedProviders() {
     const loadFeaturedServices = async () => {
       try {
         const result = await getServices();
-        console.log('Resultado completo de getServices:', result);
         
         if (result.success && result.data) {
-          console.log('Servicios recibidos:', result.data);
           
           // Tomar los primeros 4 servicios activos como destacados
           const activeServices = result.data
             .filter((service: Service) => service.status === 'active')
             .slice(0, 4);
-          
-          console.log('Servicios activos filtrados:', activeServices);
-          
-          // Debug específico para imágenes y precios
-          activeServices.forEach((service: Service, index: number) => {
-            console.log(`Servicio destacado ${index + 1}:`, {
-              id: service.id,
-              title: service.title,
-              image_url: service.image_url,
-              price: service.price,
-              category: service.category,
-              status: service.status
-            });
-          });
           
           setFeaturedServices(activeServices);
         }
@@ -130,22 +114,15 @@ export default function FeaturedProviders() {
                       const fallback2 = 'https://via.placeholder.com/400x300/3B82F6/FFFFFF?text=Servicio';
                       const fallback3 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjM0I4MkY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5TZXJ2aWNpbzwvdGV4dD48L3N2Zz4=';
 
-                      console.log('❌ Error cargando imagen:', originalSrc);
-                      
                       if (target.src === originalSrc || target.src.includes('unsplash.com')) {
-                        console.log('🔄 Intentando fallback 1');
                         target.src = fallback1;
                       } else if (target.src === fallback1) {
-                        console.log('🔄 Intentando fallback 2');
                         target.src = fallback2;
                       } else if (target.src === fallback2) {
-                        console.log('🔄 Usando fallback final');
                         target.src = fallback3;
                       }
                     }}
-                    onLoad={() => {
-                      console.log('✅ Imagen cargada correctamente:', service.image_url);
-                    }}
+                    onLoad={undefined}
                   />
                   <div className="absolute top-3 right-3">
                     <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">

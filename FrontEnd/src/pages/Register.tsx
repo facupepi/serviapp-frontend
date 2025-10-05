@@ -21,6 +21,8 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  // Mover este estado arriba del return condicional para no romper el orden de hooks
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Redirigir si el usuario ya está autenticado
   useEffect(() => {
@@ -41,7 +43,6 @@ export default function Register() {
       </div>
     );
   }
-  const [successMessage, setSuccessMessage] = useState('');
 
   const provinces = getProvinces();
 
