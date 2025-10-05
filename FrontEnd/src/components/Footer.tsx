@@ -31,15 +31,22 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Services */}
+          {/* Contact Column (replaces Services) */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Servicios</h3>
+            <h3 className="text-lg font-semibold mb-4">Contacto</h3>
             <ul className="space-y-3">
-              <li><Link to="/services?category=Hogar y Reparaciones" className="text-gray-300 hover:text-white transition-colors">Hogar y Reparaciones</Link></li>
-              <li><Link to="/services?category=Electricidad" className="text-gray-300 hover:text-white transition-colors">Electricidad</Link></li>
-              <li><Link to="/services?category=Limpieza" className="text-gray-300 hover:text-white transition-colors">Limpieza</Link></li>
-              <li><Link to="/services?category=Jardinería" className="text-gray-300 hover:text-white transition-colors">Jardinería</Link></li>
-              <li><Link to="/services?category=Tecnología" className="text-gray-300 hover:text-white transition-colors">Tecnología</Link></li>
+              <li className="flex items-center space-x-3">
+                <Mail className="h-5 w-5 text-blue-400" />
+                <span className="text-gray-300">contacto@serviapp.com</span>
+              </li>
+              <li className="flex items-center space-x-3">
+                <Phone className="h-5 w-5 text-blue-400" />
+                <span className="text-gray-300">+54 11 4567-8900</span>
+              </li>
+              <li className="flex items-center space-x-3">
+                <MapPin className="h-5 w-5 text-blue-400" />
+                <span className="text-gray-300">Buenos Aires, Argentina</span>
+              </li>
             </ul>
           </div>
 

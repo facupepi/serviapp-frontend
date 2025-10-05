@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search, Filter, MapPin, Clock, Shield, Heart, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -117,10 +117,6 @@ export default function ServicesPage() {
       try {
         const result = await getServices();
         if (result.success && result.data) {
-          console.log('🌐 ServicesPage - Servicios recibidos:', result.data.length);
-          result.data.forEach((service: any, index: number) => {
-            console.log(`🔍 Servicio ${index + 1}: "${service.title}" - Status: "${service.status}"`);
-          });
           setServices(result.data);
         } else {
           console.error('❌ Error cargando servicios:', result.error);
@@ -137,47 +133,48 @@ export default function ServicesPage() {
     loadServices();
   }, [getServices]);
 
-  // Filtrar servicios basándose en todos los criterios
-  const filteredServices = services.filter(service => {
-    const matchesSearch = !searchQuery || 
-      service.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      service.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      service.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = !selectedCategory || service.category === selectedCategory;
-    
-    const matchesLocation = (!selectedProvince && !selectedLocality) ||
-      (service.zones && service.zones.some((zone: any) => {
-        const matchesProvince = !selectedProvince || zone.province === selectedProvince;
-        const matchesLocality = !selectedLocality || zone.locality === selectedLocality;
-        return matchesProvince && matchesLocality;
-      }));
-    
-    // Solo mostrar servicios activos
-    const isActive = service.status === 'active';
-    
-    const passes = matchesSearch && matchesCategory && matchesLocation && isActive;
-    
-    return passes;
-  });
+  // Filtrar servicios basándose en todos los criterios (memoizado para evitar recomputaciones y logs múltiples)
+  const filteredServices = useMemo(() => {
+    return services.filter(service => {
+      const q = searchQuery.trim().toLowerCase();
+      const matchesSearch = !q || 
+        service.title?.toLowerCase().includes(q) ||
+        service.category?.toLowerCase().includes(q) ||
+        service.description?.toLowerCase().includes(q);
 
-  // Debug del filtrado
-  console.log('🔄 ServicesPage filtrado:', {
-    'Total servicios cargados': services.length,
-    'Servicios después del filtro': filteredServices.length,
-    'Query de búsqueda': searchQuery,
-    'Categoría seleccionada': selectedCategory,
-    'Provincia seleccionada': selectedProvince
-  });  useEffect(() => {
+      const matchesCategory = !selectedCategory || service.category === selectedCategory;
+
+      const matchesLocation = (!selectedProvince && !selectedLocality) ||
+        (service.zones && service.zones.some((zone: any) => {
+          const matchesProvince = !selectedProvince || zone.province === selectedProvince;
+          const matchesLocality = !selectedLocality || zone.locality === selectedLocality;
+          return matchesProvince && matchesLocality;
+        }));
+
+      // Solo mostrar servicios activos
+      const isActive = service.status === 'active';
+
+      return matchesSearch && matchesCategory && matchesLocation && isActive;
+    });
+  }, [services, searchQuery, selectedCategory, selectedProvince, selectedLocality]);
+
+  useEffect(() => {
     // Actualizar URL cuando cambien los filtros
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
-    if (selectedCategory) params.set('tipo', selectedCategory);
-    if (selectedProvince) params.set('provincia', selectedProvince);
-    if (selectedLocality) params.set('localidad', selectedLocality);
-    
-    setSearchParams(params);
-  }, [searchQuery, selectedCategory, selectedProvince, selectedLocality, setSearchParams]);
+    if (selectedCategory) params.set('category', selectedCategory);
+    if (selectedProvince) params.set('province', selectedProvince);
+    if (selectedLocality) params.set('locality', selectedLocality);
+
+    // Solo aplicar si realmente cambió algo en la URL para evitar renders extra
+    const current = searchParams.toString();
+    const next = params.toString();
+    if (current !== next) {
+      setSearchParams(params);
+      // Reiniciar a la primera página si cambian filtros
+      setCurrentPage(1);
+    }
+  }, [searchQuery, selectedCategory, selectedProvince, selectedLocality, setSearchParams, searchParams]);
 
   const clearFilters = () => {
     setSearchQuery('');
