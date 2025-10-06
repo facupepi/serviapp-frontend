@@ -89,9 +89,9 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
       <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100">
         {kanbanView ? (
           /* Vista Kanban: Layout horizontal con imagen a la derecha */
-          <div className="flex h-48">
+          <div className="flex h-56">
             {/* Columna izquierda: Información y botones */}
-            <div className="flex-1 p-6 flex flex-col">
+            <div className="flex-1 p-6 flex flex-col justify-between">
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{request.serviceName}</h3>
                 <div className="flex items-center text-gray-600 text-sm mb-3">
