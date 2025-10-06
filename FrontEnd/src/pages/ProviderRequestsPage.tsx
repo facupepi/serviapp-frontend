@@ -14,7 +14,14 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
   const [rejectionReason, setRejectionReason] = useState('');
   const { respondToRequest } = useAuth();
 
-  const requestDate = request.requestedDate ? new Date(request.requestedDate) : null;
+  // Parse a YYYY-MM-DD string into a local Date object (avoids UTC parsing)
+  const parseLocalDate = (dateStr: string) => {
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return new Date(dateStr);
+    const [y, m, d] = dateStr.split('-').map((v) => parseInt(v, 10));
+    return new Date(y, m - 1, d);
+  };
+
+  const requestDate = request.requestedDate ? parseLocalDate(request.requestedDate) : null;
   const canRespond = request.status === 'pending';
 
   const getStatusColor = (status: string) => {

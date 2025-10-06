@@ -580,14 +580,31 @@ export const authAPI = {
       logger.debug('Solicitando mis appointments (GET /api/my-appointments)');
       const response = await api.get('/api/my-appointments');
       logger.info('Mis appointments obtenidos:', response.data);
-      return { success: true, data: response.data.data, message: response.data.message };
+      
+      // Transform data to handle null rejection_reason
+      const transformedData = Array.isArray(response.data.data) 
+        ? response.data.data.map((appointment: any) => ({
+            ...appointment,
+            rejection_reason: appointment.rejection_reason || null,
+            rejectionReason: appointment.rejection_reason || appointment.rejectionReason || null
+          }))
+        : response.data.data;
+      
+      return { success: true, data: transformedData, message: response.data.message };
     } catch (error: any) {
       logger.error('Error obteniendo mis appointments:', error);
       let errorMessage = 'Error al obtener mis turnos';
       if (error.response) {
         const status = error.response.status;
         if (status === 401) errorMessage = 'No autenticado';
-        else if (status === 500) errorMessage = error.response.data?.message || 'Error interno del servidor';
+        else if (status === 500) {
+          const serverError = error.response.data?.message || error.response.data?.error || '';
+          if (serverError.includes('rejection_reason') && serverError.includes('NULL')) {
+            errorMessage = 'Error de base de datos: campo rejection_reason con valor NULL';
+          } else {
+            errorMessage = serverError || 'Error interno del servidor';
+          }
+        }
         else errorMessage = error.response.data?.message || `Error del servidor (${status})`;
       } else if (error.request) {
         errorMessage = 'No se pudo conectar al servidor.';
@@ -839,7 +856,17 @@ export const authAPI = {
       logger.debug('Obteniendo appointments para servicio:', serviceId);
       const response = await api.get(`/api/services/${serviceId}/appointments`);
       logger.info('Appointments del servicio obtenidos:', response.data);
-      return { success: true, data: response.data.data, message: response.data.message };
+      
+      // Transform data to handle null rejection_reason
+      const transformedData = Array.isArray(response.data.data) 
+        ? response.data.data.map((appointment: any) => ({
+            ...appointment,
+            rejection_reason: appointment.rejection_reason || null,
+            rejectionReason: appointment.rejection_reason || appointment.rejectionReason || null
+          }))
+        : response.data.data;
+      
+      return { success: true, data: transformedData, message: response.data.message };
     } catch (error: any) {
       logger.error('Error obteniendo appointments del servicio:', error);
       let errorMessage = 'Error al obtener los turnos del servicio';
@@ -848,6 +875,14 @@ export const authAPI = {
         if (status === 401) errorMessage = 'No autenticado';
         else if (status === 403) errorMessage = 'No tienes permisos para ver los turnos de este servicio';
         else if (status === 404) errorMessage = 'Servicio no encontrado';
+        else if (status === 500) {
+          const serverError = error.response.data?.message || error.response.data?.error || '';
+          if (serverError.includes('rejection_reason') && serverError.includes('NULL')) {
+            errorMessage = 'Error de base de datos: campo rejection_reason con valor NULL';
+          } else {
+            errorMessage = serverError || 'Error interno del servidor';
+          }
+        }
         else errorMessage = error.response.data?.message || `Error del servidor (${status})`;
       } else if (error.request) {
         errorMessage = 'No se pudo conectar al servidor.';
@@ -861,7 +896,7 @@ export const authAPI = {
     try {
       logger.debug('Actualizando estado de appointment:', appointmentId, 'status:', status, 'extra:', extra);
       const payload: any = { status };
-      if (extra?.rejectionReason) payload.rejectionReason = extra.rejectionReason;
+      if (extra?.rejectionReason) payload.rejection_reason = extra.rejectionReason;
       const response = await api.put(`/api/appointments/${appointmentId}/status`, payload);
       logger.info('Respuesta updateAppointmentStatus:', response.data);
       return { success: true, data: response.data };

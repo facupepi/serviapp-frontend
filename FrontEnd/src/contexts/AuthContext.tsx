@@ -1233,15 +1233,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: a.id?.toString() || Date.now().toString(),
           serviceId: svc.id?.toString() || '',
           serviceName: svc.title || 'Servicio',
-          serviceImage: (svc as any).image_url || (svc as any).image,
+          serviceImage: svc.image_url || svc.image || '',
           clientId: a.client_id?.toString() || user.id,
           clientName: user.name,
           providerId: a.provider_id?.toString() || '',
           providerName: svc.providerName || svc.provider_name || '',
-          requestedDate: a.date,
+          requestedDate: a.date, // Use date field directly as it's already in YYYY-MM-DD format
           requestedTime: a.time_slot,
           status: a.status,
-          rejectionReason: (a as any).rejection_reason || (a as any).rejectionReason || undefined,
+          rejectionReason: a.rejection_reason || a.rejectionReason || undefined,
           createdAt: a.created_at || a.createdAt || new Date().toISOString()
         } as ServiceRequest;
       });
@@ -1265,26 +1265,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Mapear al formato ServiceRequest que usa la UI
       const mapped = appointments.map((a: any) => {
-        const svc = a.service || a.service_data || {};
+        const svc = a.service || {};
         return {
           id: a.id?.toString() || Date.now().toString(),
           serviceId: svc.id?.toString() || serviceId,
-          serviceName: svc.title || svc.name || 'Servicio',
-          serviceImage: (svc as any).image_url || (svc as any).image || '',
-          clientId: a.client_id?.toString() || a.client?.id?.toString() || '',
+          serviceName: svc.title || 'Servicio',
+          serviceImage: svc.image_url || svc.image || '',
+          clientId: a.client_id?.toString() || '',
           clientName: a.client_name || a.client?.name || 'Cliente',
-          providerId: a.provider_id?.toString() || a.provider?.id?.toString() || user.id,
+          providerId: a.provider_id?.toString() || user.id,
           providerName: a.provider_name || a.provider?.name || user.name,
-          requestedDate: a.date,
+          requestedDate: a.date, // Use date field directly as it's already in YYYY-MM-DD format
           requestedTime: a.time_slot,
           status: a.status,
-          rejectionReason: (a as any).rejection_reason || (a as any).rejectionReason || undefined,
+          rejectionReason: a.rejection_reason || a.rejectionReason || undefined,
           createdAt: a.created_at || a.createdAt || new Date().toISOString()
         } as ServiceRequest;
       });
 
-  setProviderRequests(mapped);
-  setProviderRequestsLoaded(true);
+      setProviderRequests(mapped);
+      setProviderRequestsLoaded(true);
       return { success: true, data: appointments };
     } catch (error) {
       logger.error('Error en getServiceAppointments:', error);

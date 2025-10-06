@@ -11,6 +11,13 @@ interface RequestCardProps {
 }
 
 const RequestCard: React.FC<RequestCardProps> = ({ request, onRate, kanbanView = false }) => {
+  // Parse a YYYY-MM-DD string into a local Date object (avoids UTC parsing)
+  const parseLocalDate = (dateStr: string) => {
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return new Date(dateStr);
+    const [y, m, d] = dateStr.split('-').map((v) => parseInt(v, 10));
+    return new Date(y, m - 1, d);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -55,7 +62,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onRate, kanbanView =
     }
   };
 
-  const requestDate = request.requestedDate ? new Date(request.requestedDate) : null;
+  const requestDate = request.requestedDate ? parseLocalDate(request.requestedDate) : null;
   const canRate = request.status === 'accepted' && (requestDate ? requestDate < new Date() : false);
 
   return (

@@ -227,7 +227,14 @@ export default function Dashboard() {
   const formatDateForDashboard = (dateStr?: string) => {
     if (!dateStr) return '';
     try {
-      const d = new Date(dateStr);
+      // Parse a YYYY-MM-DD string into a local Date object (avoids UTC parsing)
+      const parseLocalDate = (str: string) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return new Date(str);
+        const [y, m, d] = str.split('-').map((v) => parseInt(v, 10));
+        return new Date(y, m - 1, d);
+      };
+      
+      const d = parseLocalDate(dateStr);
       return d.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
     } catch (e) {
       return dateStr;
