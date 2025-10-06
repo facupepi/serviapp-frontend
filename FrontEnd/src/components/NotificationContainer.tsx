@@ -10,7 +10,7 @@ const NotificationContainer: React.FC = () => {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-4 max-w-md">
+    <div className="fixed bottom-4 right-4 z-50 space-y-4 max-w-md">
       {notifications.map(notification => (
         <div key={notification.id} className="animate-in fade-in slide-in-from-right-5 duration-300">
           <Alert

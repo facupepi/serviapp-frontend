@@ -48,6 +48,9 @@ export default function Header() {
                     <Link to="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                       Mi Dashboard
                     </Link>
+                    <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      Mi Perfil
+                    </Link>
                     <Link to="/favorites" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                       <Heart className="h-4 w-4 mr-2" />
                       Mis Favoritos
@@ -106,6 +109,9 @@ export default function Header() {
               <>
                 <Link to="/dashboard" className="block text-gray-700 hover:text-blue-600 transition-colors">
                   Mi Dashboard
+                </Link>
+                <Link to="/profile" className="block text-gray-700 hover:text-blue-600 transition-colors">
+                  Mi Perfil
                 </Link>
                 <Link to="/favorites" className="block text-gray-700 hover:text-blue-600 transition-colors">
                   Mis Favoritos

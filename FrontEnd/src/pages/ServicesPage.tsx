@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import logger from '../utils/logger';
+// Image is required on services; use service-provided URL directly
 import { Search, Filter, MapPin, Shield, Heart, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import FiltersSidebar from '../components/FiltersSidebar';
@@ -38,12 +39,10 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isFavorite, onToggle
     >
       <div className="relative">
         <img
-          src={service.image_url}
+          src={service.image_url || service.image}
           alt={service.title}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={(e) => {
-            e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Sin+Imagen';
-          }}
+          onError={() => { /* image field is required on backend */ }}
         />
         {/* Category badge on image (like FeaturedProviders) */}
         <div className="absolute top-3 right-3">
@@ -139,7 +138,7 @@ export default function ServicesPage() {
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  const servicesPerPage = 10;
+  const servicesPerPage = 9;
 
   useEffect(() => {
     const loadServices = async () => {
@@ -350,6 +349,20 @@ export default function ServicesPage() {
               </div>
             ) : (
               <>
+                {/* Información de resultados y paginación */}
+                {filteredServices.length > 0 && (
+                  <div className="flex justify-between items-center mb-6 text-sm text-gray-600">
+                    <div>
+                      Mostrando {startIndex + 1}-{Math.min(endIndex, filteredServices.length)} de {filteredServices.length} servicios
+                    </div>
+                    {filteredServices.length > 9 && (
+                      <div>
+                        Página {currentPage} de {totalPages}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {currentServices.map((service) => (
                     <ServiceCard
@@ -362,8 +375,8 @@ export default function ServicesPage() {
                   ))}
                 </div>
 
-                {/* Paginación */}
-                {totalPages > 1 && (
+                {/* Paginación - se muestra cuando hay más de 9 servicios */}
+                {filteredServices.length > 9 && (
                   <div className="flex justify-center items-center space-x-2 mt-8">
                     <button
                       onClick={() => handlePageChange(currentPage - 1)}

@@ -24,6 +24,8 @@ interface FormData {
   description: string;
   price: number;
   image: string;
+  durationMinutes?: number;
+  bookingWindowDays?: number;
   zones: { province: string; locality: string; neighborhood?: string }[];
   availability: {
     monday: AvailabilityDay;
@@ -55,6 +57,8 @@ export default function EditService() {
     description: '',
     price: 0,
     image: '',
+    durationMinutes: 60,
+    bookingWindowDays: 30,
     zones: [],
     availability: {
       monday: { enabled: false, timeSlots: [] },
@@ -128,8 +132,23 @@ export default function EditService() {
           dayKey = dayMap[key];
         }
         if (!dayKey) return;
-        // Si ya hay timeSlots válidos, no sobrescribir con available: false
-        if (Array.isArray(schedule.timeSlots) && schedule.timeSlots.length > 0) {
+        
+        // Manejar el formato del backend: { "friday": ["09:00-17:00"] }
+        if (Array.isArray(schedule)) {
+          const timeSlots = schedule.map((timeRange: string) => {
+            const [start, end] = timeRange.split('-');
+            return { start: start.trim(), end: end.trim() };
+          }).filter(slot => slot.start && slot.end);
+          
+          if (timeSlots.length > 0) {
+            availabilityMap[dayKey] = {
+              enabled: true,
+              timeSlots
+            };
+          }
+        }
+        // Formato anterior con timeSlots object
+        else if (Array.isArray(schedule.timeSlots) && schedule.timeSlots.length > 0) {
           availabilityMap[dayKey] = {
             enabled: true,
             timeSlots: schedule.timeSlots.map((slot: any) => ({ start: slot.start, end: slot.end }))
@@ -156,6 +175,8 @@ export default function EditService() {
       description: serviceData.description || '',
       price: Number(serviceData.price) || 0,
       image: serviceData.image_url || '',
+      durationMinutes: Number(serviceData.duration_minutes) || 60,
+      bookingWindowDays: Number(serviceData.booking_window_days) || 30,
       zones: serviceData.zones || [],
       availability: availabilityMap
     };
@@ -169,20 +190,20 @@ export default function EditService() {
       category: data.category,
       description: data.description,
       price: Number(data.price),
+      duration_minutes: Number(data.durationMinutes) || 60,
+      booking_window_days: Number(data.bookingWindowDays) || 30,
       image: data.image,
       zones: data.zones,
       availability: {}
     };
-    // Solo enviar claves de día, y si hay timeSlots, usar timeSlots, si no, available: false
+    // Enviar availability en formato del backend: { day: ["HH:MM-HH:MM"] }
     (Object.keys(data.availability) as Array<keyof typeof data.availability>).forEach((day) => {
       const dayData = data.availability[day];
       if (dayData.enabled && dayData.timeSlots.length > 0) {
-        transformed.availability[day] = {
-          timeSlots: dayData.timeSlots.map(slot => ({ start: slot.start, end: slot.end }))
-        };
-      } else {
-        transformed.availability[day] = { available: false };
+        // Convertir timeSlots a formato string "HH:MM-HH:MM"
+        transformed.availability[day] = dayData.timeSlots.map(slot => `${slot.start}-${slot.end}`);
       }
+      // Si el día no está habilitado, no incluirlo en el objeto availability
     });
     return transformed;
   };
@@ -299,8 +320,8 @@ export default function EditService() {
 
     if (!formData.description.trim()) {
       newErrors.description = 'La descripción es obligatoria';
-    } else if (formData.description.length < 50) {
-      newErrors.description = 'La descripción debe tener al menos 50 caracteres';
+    } else if (formData.description.length < 100) {
+      newErrors.description = 'La descripción debe tener al menos 100 caracteres';
     }
 
     setErrors(newErrors);
@@ -327,6 +348,14 @@ export default function EditService() {
 
     if (!hasAvailability) {
       newErrors.availability = 'Debes configurar al menos un día y horario de disponibilidad';
+    }
+
+    // Validar duración y ventana de reservas en el paso 3
+    if (!formData.durationMinutes || formData.durationMinutes <= 0) {
+      newErrors.durationMinutes = 'La duración debe ser mayor a 0 minutos';
+    }
+    if (!formData.bookingWindowDays || formData.bookingWindowDays <= 0) {
+      newErrors.bookingWindowDays = 'Debes indicar el tiempo permitido para ofrecer turnos';
     }
 
     setErrors(newErrors);
@@ -474,6 +503,14 @@ export default function EditService() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      {/* Fixed loading indicator */}
+      {isSubmitting && (
+        <div className="fixed bottom-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center z-50">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+          Procesando...
+        </div>
+      )}
+      
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
@@ -601,7 +638,7 @@ export default function EditService() {
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
                     Descripción detallada *
                   </label>
-                  <textarea
+                    <textarea
                     id="description"
                     rows={6}
                     value={formData.description}
@@ -609,14 +646,14 @@ export default function EditService() {
                     className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       errors.description ? 'border-red-300' : 'border-gray-300'
                     }`}
-                    placeholder="Describe en detalle tu servicio, experiencia, herramientas que utilizas, etc. (mínimo 50 caracteres)"
+                    placeholder="Describe en detalle tu servicio, experiencia, herramientas que utilizas, etc. (mínimo 100 caracteres)"
                   />
                   <div className="flex justify-between mt-1">
                     {errors.description && (
                       <p className="text-sm text-red-600">{errors.description}</p>
                     )}
                     <p className="text-sm text-gray-500 ml-auto">
-                      {formData.description.length}/50 caracteres mínimo
+                      {formData.description.length}/100 caracteres mínimo
                     </p>
                   </div>
                 </div>
@@ -636,9 +673,40 @@ export default function EditService() {
                     Agrega una imagen representativa de tu servicio
                   </p>
                 </div>
+
+                {/* duration and booking window moved to Step 3 */}
               </div>
 
-              <div className="flex justify-end mt-8">
+              <div className="flex justify-between mt-8">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (validateStep1()) {
+                      setIsSubmitting(true);
+                      try {
+                        const result = await updateService(serviceId!, transformDataForAPI(formData));
+                        if (result.success) {
+                          addNotification({
+                            type: 'success',
+                            message: 'Información básica guardada'
+                          });
+                        }
+                      } catch (error) {
+                        addNotification({
+                          type: 'error',
+                          message: 'Error al guardar'
+                        });
+                      } finally {
+                        setIsSubmitting(false);
+                      }
+                    }
+                  }}
+                  disabled={isSubmitting}
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Guardar
+                </button>
                 <button
                   type="button"
                   onClick={nextStep}
@@ -749,13 +817,44 @@ export default function EditService() {
                 >
                   Anterior
                 </button>
-                <button
-                  type="button"
-                  onClick={nextStep}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Siguiente
-                </button>
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (validateStep2()) {
+                        setIsSubmitting(true);
+                        try {
+                          const result = await updateService(serviceId!, transformDataForAPI(formData));
+                          if (result.success) {
+                            addNotification({
+                              type: 'success',
+                              message: 'Zonas de cobertura guardadas'
+                            });
+                          }
+                        } catch (error) {
+                          addNotification({
+                            type: 'error',
+                            message: 'Error al guardar'
+                          });
+                        } finally {
+                          setIsSubmitting(false);
+                        }
+                      }
+                    }}
+                    disabled={isSubmitting}
+                    className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Guardar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={nextStep}
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Siguiente
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -768,6 +867,38 @@ export default function EditService() {
               </h2>
 
               <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Duración estimada (minutos)</label>
+                    <select
+                      value={formData.durationMinutes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, durationMinutes: parseInt(e.target.value || '0', 10) || 0 }))}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.durationMinutes ? 'border-red-300' : 'border-gray-300'}`}
+                    >
+                      {[30, 60, 120, 150, 180].map(v => (
+                        <option key={v} value={v}>{v} minutos</option>
+                      ))}
+                    </select>
+                    {errors.durationMinutes && <p className="text-sm text-red-600 mt-1">{errors.durationMinutes}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tiempo permitido para ofrecer turnos (días)</label>
+                    <select
+                      value={formData.bookingWindowDays}
+                      onChange={(e) => setFormData(prev => ({ ...prev, bookingWindowDays: parseInt(e.target.value || '0', 10) || 0 }))}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    >
+                      {[30, 60, 90, 120].map(v => (
+                        <option key={v} value={v}>{v} días</option>
+                      ))}
+                    </select>
+                    {errors.bookingWindowDays && <p className="text-sm text-red-600 mt-1">{errors.bookingWindowDays}</p>}
+                  </div>
+                </div>
+
+                <div className="mt-4" />
+
                 {Object.entries(formData.availability).map(([day, dayData]) => (
                   <div key={day} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-4">
@@ -789,30 +920,32 @@ export default function EditService() {
                     {dayData.enabled && (
                       <div className="space-y-3">
                         {dayData.timeSlots.map((slot, slotIndex) => (
-                          <div key={slotIndex} className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-2">
+                          <div key={slotIndex} className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4">
+                            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 w-full md:w-auto">
                               <input
                                 type="time"
                                 value={slot.start}
                                 onChange={(e) => updateTimeSlot(day as keyof typeof formData.availability, slotIndex, 'start', e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full md:w-28 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               />
-                              <span className="text-gray-500">hasta</span>
+                              <span className="text-gray-500 md:mx-2">hasta</span>
                               <input
                                 type="time"
                                 value={slot.end}
                                 onChange={(e) => updateTimeSlot(day as keyof typeof formData.availability, slotIndex, 'end', e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full md:w-28 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               />
                             </div>
                             {dayData.timeSlots.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeTimeSlot(day as keyof typeof formData.availability, slotIndex)}
-                                className="text-red-600 hover:text-red-800"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
+                              <div className="flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => removeTimeSlot(day as keyof typeof formData.availability, slotIndex)}
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
                             )}
                           </div>
                         ))}

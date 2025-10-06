@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
+// Image is required on services; do not inject default image here
 import { getProvinces, getLocalitiesObject } from '../data/argentina';
 
 interface AvailabilityDay {
@@ -24,6 +25,8 @@ interface FormData {
   description: string;
   price: number;
   image: string;
+  durationMinutes: number;
+  bookingWindowDays: number;
   zones: { province: string; locality: string; neighborhood?: string }[];
   availability: {
     monday: AvailabilityDay;
@@ -69,6 +72,8 @@ export default function OfferService() {
     description: '',
     price: 0,
     image: '',
+    durationMinutes: 60,
+    bookingWindowDays: 30,
     zones: [],
     availability: {
       monday: { enabled: false, timeSlots: [] },
@@ -222,8 +227,8 @@ export default function OfferService() {
       if (!formData.title.trim()) newErrors.title = 'El título es requerido';
       if (!formData.category) newErrors.category = 'Selecciona una categoría';
       if (!formData.price || formData.price <= 0) newErrors.price = 'El precio debe ser mayor a 0';
-      if (!formData.description.trim()) newErrors.description = 'La descripción es requerida';
-      if (formData.description.length < 50) newErrors.description = 'La descripción debe tener al menos 50 caracteres';
+  if (!formData.description.trim()) newErrors.description = 'La descripción es requerida';
+  if (formData.description.length < 100) newErrors.description = 'La descripción debe tener al menos 100 caracteres';
     }
 
     if (step === 2) {
@@ -233,6 +238,9 @@ export default function OfferService() {
     if (step === 3) {
       const hasAvailability = Object.values(formData.availability).some(day => day.enabled);
       if (!hasAvailability) newErrors.availability = 'Selecciona al menos un día disponible';
+      // Validar duración y ventana de reservas en el paso 3 (moved here)
+      if (!formData.durationMinutes || formData.durationMinutes <= 0) newErrors.durationMinutes = 'La duración debe ser mayor a 0 minutos';
+      if (!formData.bookingWindowDays || formData.bookingWindowDays <= 0) newErrors.bookingWindowDays = 'Debes indicar el tiempo permitido para ofrecer turnos';
       
       // Validar que cada día habilitado tenga horarios
       Object.entries(formData.availability).forEach(([day, config]) => {
@@ -257,25 +265,27 @@ export default function OfferService() {
 
     setLoading(true);
     try {
-      // Convertir availability al formato esperado
-      const availability = Object.entries(formData.availability)
-        .filter(([, config]) => config.enabled)
-        .map(([day, config]) => ({
-          day,
-          timeSlots: config.timeSlots
-        }));
+      // Convertir availability al formato esperado por el backend: { day: ['HH:MM-HH:MM', ...], ... }
+      const availabilityObj: Record<string, string[]> = {};
+      Object.entries(formData.availability).forEach(([day, config]: any) => {
+        if (config.enabled && Array.isArray(config.timeSlots) && config.timeSlots.length) {
+          availabilityObj[day] = config.timeSlots.map((ts: any) => `${ts.start}-${ts.end}`);
+        }
+      });
 
       const serviceData = {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        price: formData.price, // Include price so backend receives it
+        price: Number(formData.price) || 0,
+        duration_minutes: Number(formData.durationMinutes) || 60,
+        booking_window_days: Number(formData.bookingWindowDays) || 30,
         zones: formData.zones,
-        availability,
-        image: formData.image || 'https://via.placeholder.com/300x200?text=Servicio'
+        availability: availabilityObj,
+  image_url: formData.image
       };
 
-      const result = await createService(serviceData);
+      const result = await createService(serviceData as any);
       
       if (result.success) {
         addNotification({
@@ -360,6 +370,8 @@ export default function OfferService() {
         {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
       </div>
 
+      {/* duration and booking window moved to Step 3 */}
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Descripción del servicio *
@@ -374,7 +386,7 @@ export default function OfferService() {
           placeholder="Describe detalladamente qué servicios ofreces, tu experiencia y qué hace único tu trabajo..."
         />
         <p className="text-sm text-gray-500 mt-1">
-          {formData.description.length}/500 caracteres (mínimo 50)
+          {formData.description.length}/500 caracteres (mínimo 100)
         </p>
         {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
       </div>
@@ -513,6 +525,35 @@ export default function OfferService() {
       </div>
 
       <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Duración estimada (minutos)</label>
+              <select
+                value={formData.durationMinutes}
+                onChange={(e) => handleInputChange('durationMinutes', parseInt(e.target.value || '0', 10) || 0)}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.durationMinutes ? 'border-red-500' : 'border-gray-300'}`}
+              >
+                {[30, 60, 120, 150, 180].map(v => (
+                  <option key={v} value={v}>{v} minutos</option>
+                ))}
+              </select>
+              {errors.durationMinutes && <p className="text-red-500 text-sm mt-1">{errors.durationMinutes}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tiempo permitido para ofrecer turnos (días)</label>
+              <select
+                value={formData.bookingWindowDays}
+                onChange={(e) => handleInputChange('bookingWindowDays', parseInt(e.target.value || '0', 10) || 0)}
+                className="w-full px-3 py-2 border rounded-lg"
+              >
+                {[30, 60, 90, 120].map(v => (
+                  <option key={v} value={v}>{v} días</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
         {Object.entries(formData.availability).map(([day, config]) => (
           <div key={day} className="border border-gray-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
@@ -541,33 +582,37 @@ export default function OfferService() {
             {config.enabled && (
               <div className="space-y-2">
                 {config.timeSlots.map((slot, index) => (
-                  <div key={index} className="flex items-center gap-3 bg-gray-50 p-3 rounded">
-                    <Clock className="h-5 w-5 text-gray-600" />
-                    <select
-                      value={slot.start}
-                      onChange={(e) => updateTimeSlot(day as keyof FormData['availability'], index, 'start', e.target.value)}
-                      className="px-2 py-1 border border-gray-300 rounded"
-                    >
-                      {timeOptions.map(time => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
-                    <span>hasta</span>
-                    <select
-                      value={slot.end}
-                      onChange={(e) => updateTimeSlot(day as keyof FormData['availability'], index, 'end', e.target.value)}
-                      className="px-2 py-1 border border-gray-300 rounded"
-                    >
-                      {timeOptions.map(time => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => removeTimeSlot(day as keyof FormData['availability'], index)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
+                  <div key={index} className="flex flex-col md:flex-row items-start md:items-center gap-3 bg-gray-50 p-3 rounded">
+                    <div className="flex flex-col md:flex-row items-start md:items-center gap-2 w-full md:w-auto">
+                      <Clock className="h-5 w-5 text-gray-600" />
+                      <select
+                        value={slot.start}
+                        onChange={(e) => updateTimeSlot(day as keyof FormData['availability'], index, 'start', e.target.value)}
+                        className="w-full md:w-28 px-2 py-1 border border-gray-300 rounded"
+                      >
+                        {timeOptions.map(time => (
+                          <option key={time} value={time}>{time}</option>
+                        ))}
+                      </select>
+                      <span className="text-gray-500 md:mx-2">hasta</span>
+                      <select
+                        value={slot.end}
+                        onChange={(e) => updateTimeSlot(day as keyof FormData['availability'], index, 'end', e.target.value)}
+                        className="w-full md:w-28 px-2 py-1 border border-gray-300 rounded"
+                      >
+                        {timeOptions.map(time => (
+                          <option key={time} value={time}>{time}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <button
+                        onClick={() => removeTimeSlot(day as keyof FormData['availability'], index)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {config.timeSlots.length === 0 && (

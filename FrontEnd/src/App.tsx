@@ -27,6 +27,7 @@ import HowItWorksPage from './pages/HowItWorksPage';
 import TermsAndConditions from './pages/TermsAndConditions';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Help from './pages/Help';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -65,6 +66,7 @@ function App() {
                 <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/help" element={<Help />} />
+                <Route path="/profile" element={<Profile />} />
               </Routes>
             </main>
             <Footer />

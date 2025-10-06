@@ -538,6 +538,81 @@ export const authAPI = {
     }
   },
 
+  // Crear un turno / cita
+  createAppointment: async (appointmentData: { service_id: number; date: string; time_slot: string; notes?: string }): Promise<ApiResponse<any>> => {
+    try {
+      logger.debug('Creando appointment:', appointmentData);
+      const response = await api.post('/api/appointments', appointmentData);
+      logger.info('Appointment creado:', response.data);
+      return {
+        success: true,
+        data: response.data.data,
+        message: response.data.message,
+      };
+    } catch (error: any) {
+      logger.error('Error creando appointment:', error);
+      let errorMessage = 'Error al crear el turno';
+      if (error.response) {
+        const { status, data } = error.response;
+        switch (status) {
+          case 400:
+            errorMessage = data?.message || 'Solicitud inválida';
+            break;
+          case 401:
+            errorMessage = 'No autenticado';
+            break;
+          case 409:
+            errorMessage = data?.message || 'El horario ya está ocupado';
+            break;
+          default:
+            errorMessage = data?.message || `Error del servidor (${status})`;
+        }
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
+      }
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // Obtener mis turnos (cliente)
+  getMyAppointments: async (): Promise<ApiResponse<any>> => {
+    try {
+      logger.debug('Solicitando mis appointments (GET /api/my-appointments)');
+      const response = await api.get('/api/my-appointments');
+      logger.info('Mis appointments obtenidos:', response.data);
+      return { success: true, data: response.data.data, message: response.data.message };
+    } catch (error: any) {
+      logger.error('Error obteniendo mis appointments:', error);
+      let errorMessage = 'Error al obtener mis turnos';
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 401) errorMessage = 'No autenticado';
+        else if (status === 500) errorMessage = error.response.data?.message || 'Error interno del servidor';
+        else errorMessage = error.response.data?.message || `Error del servidor (${status})`;
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
+      }
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // Actualizar perfil del usuario autenticado
+  updateProfile: async (profileData: { name?: string; email?: string; locality?: string; province?: string; phone?: string; }): Promise<ApiResponse> => {
+    try {
+      logger.debug('Updating user profile with:', profileData);
+      const response = await api.put('/api/user/profile', profileData);
+      logger.info('Profile update response:', response.data);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      logger.error('Error updating profile:', error);
+      let errMsg = 'Error updating profile';
+      if (error.response) {
+        errMsg = error.response.data?.error || error.response.data?.message || errMsg;
+      }
+      return { success: false, error: errMsg };
+    }
+  },
+
   getUserServices: async (): Promise<ApiResponse<ServiceResponse[]>> => {
     try {
   logger.debug('Obteniendo mis servicios...');
@@ -646,10 +721,12 @@ export const authAPI = {
     }
   },
 
-  toggleServiceStatus: async (serviceId: string): Promise<ApiResponse<ServiceResponse>> => {
+  toggleServiceStatus: async (serviceId: string, status?: string): Promise<ApiResponse<ServiceResponse>> => {
     try {
-  logger.debug('Cambiando estado del servicio:', serviceId);
-  const response = await api.patch(`/api/services/${serviceId}`);
+  logger.debug('Cambiando estado del servicio:', serviceId, 'status:', status);
+  // Enviar el nuevo estado en el body según el swagger: { status: 'active' | 'inactive' }
+  const payload = status ? { status } : {};
+  const response = await api.patch(`/api/services/${serviceId}/status`, payload);
   logger.info('Estado del servicio cambiado:', response.data);
       
       return {
@@ -684,6 +761,124 @@ export const authAPI = {
         success: false,
         error: errorMessage,
       };
+    }
+  },
+
+  // Eliminar un servicio (solo propietario)
+  deleteService: async (serviceId: string): Promise<ApiResponse<any>> => {
+    try {
+      logger.debug('Enviando DELETE para servicio:', serviceId);
+      const response = await api.delete(`/api/services/${serviceId}`);
+      logger.info('Respuesta DELETE exitosa:', response.data);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      logger.error('Error en deleteService:', error);
+      logger.error('Response data:', error.response?.data);
+      logger.error('Response status:', error.response?.status);
+
+      let errorMessage = 'Error al eliminar el servicio';
+      const status = error.response?.status;
+      if (status === 401) errorMessage = 'Usuario no autenticado';
+      else if (status === 403) errorMessage = error.response?.data?.error || 'No autorizado para eliminar este servicio';
+      else if (status === 404) errorMessage = error.response?.data?.error || 'Servicio no encontrado';
+      else if (status === 500) errorMessage = 'Error interno del servidor';
+      else errorMessage = error.response?.data?.error || error.message || errorMessage;
+
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // Obtener calendario de disponibilidad del servicio para los próximos 30 días
+  getServiceCalendar: async (serviceId: string): Promise<ApiResponse<any>> => {
+    try {
+      logger.debug('Obteniendo calendario para servicio:', serviceId);
+      const response = await api.get(`/api/services/${serviceId}/calendar`);
+      logger.info('Calendario obtenido:', response.data);
+      return { success: true, data: response.data.data, message: response.data.message };
+    } catch (error: any) {
+      logger.error('Error obteniendo calendario del servicio:', error);
+      let errorMessage = 'Error al obtener el calendario';
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 404) errorMessage = 'Servicio no encontrado';
+        else if (status === 500) errorMessage = 'Error interno del servidor';
+        else errorMessage = error.response.data?.error || error.message || errorMessage;
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
+      }
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // Obtener disponibilidad para una fecha específica
+  getServiceAvailability: async (serviceId: string, date: string): Promise<ApiResponse<any>> => {
+    try {
+      logger.debug('Obteniendo disponibilidad para servicio:', serviceId, 'fecha:', date);
+      const response = await api.get(`/api/services/${serviceId}/availability`, { params: { date } });
+      logger.info('Disponibilidad obtenida:', response.data);
+      return { success: true, data: response.data.data, message: response.data.message };
+    } catch (error: any) {
+      logger.error('Error obteniendo disponibilidad del servicio:', error);
+      let errorMessage = 'Error al obtener disponibilidad';
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 400) errorMessage = error.response.data?.error || 'Solicitud inválida';
+        else if (status === 404) errorMessage = 'Servicio no encontrado';
+        else if (status === 500) errorMessage = 'Error interno del servidor';
+        else errorMessage = error.response.data?.error || error.message || errorMessage;
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
+      }
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // Obtener los turnos (appointments) asignados a un servicio (solo para el proveedor del servicio)
+  getServiceAppointments: async (serviceId: string): Promise<ApiResponse<any>> => {
+    try {
+      logger.debug('Obteniendo appointments para servicio:', serviceId);
+      const response = await api.get(`/api/services/${serviceId}/appointments`);
+      logger.info('Appointments del servicio obtenidos:', response.data);
+      return { success: true, data: response.data.data, message: response.data.message };
+    } catch (error: any) {
+      logger.error('Error obteniendo appointments del servicio:', error);
+      let errorMessage = 'Error al obtener los turnos del servicio';
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 401) errorMessage = 'No autenticado';
+        else if (status === 403) errorMessage = 'No tienes permisos para ver los turnos de este servicio';
+        else if (status === 404) errorMessage = 'Servicio no encontrado';
+        else errorMessage = error.response.data?.message || `Error del servidor (${status})`;
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
+      }
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // Actualizar el estado de un appointment
+  updateAppointmentStatus: async (appointmentId: string | number, status: string, extra?: { rejectionReason?: string }): Promise<ApiResponse<any>> => {
+    try {
+      logger.debug('Actualizando estado de appointment:', appointmentId, 'status:', status, 'extra:', extra);
+      const payload: any = { status };
+      if (extra?.rejectionReason) payload.rejectionReason = extra.rejectionReason;
+      const response = await api.put(`/api/appointments/${appointmentId}/status`, payload);
+      logger.info('Respuesta updateAppointmentStatus:', response.data);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      logger.error('Error updateAppointmentStatus:', error);
+      let errorMessage = 'Error actualizando el estado del turno';
+      if (error.response) {
+        const statusCode = error.response.status;
+        if (statusCode === 400) errorMessage = error.response.data?.error || 'Solicitud inválida';
+        else if (statusCode === 401) errorMessage = 'No autenticado';
+        else if (statusCode === 403) errorMessage = 'No autorizado para modificar este turno';
+        else if (statusCode === 404) errorMessage = 'Turno no encontrado';
+        else errorMessage = error.response.data?.message || `Error del servidor (${statusCode})`;
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
+      }
+      return { success: false, error: errorMessage };
     }
   },
 

@@ -68,14 +68,6 @@ export default function Footer() {
           <p className="text-gray-400 text-sm">
             © 2025 ServiApp. Todos los derechos reservados.
           </p>
-          <div className="flex space-x-6 mt-4 md:mt-0">
-            <Link to="/privacy-policy" className="text-gray-400 hover:text-white text-sm transition-colors">
-              Política de Privacidad
-            </Link>
-            <Link to="/terms-and-conditions" className="text-gray-400 hover:text-white text-sm transition-colors">
-              Términos de Uso
-            </Link>
-          </div>
         </div>
       </div>
     </footer>

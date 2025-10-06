@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import logger from '../utils/logger';
+// Image is required on services; use service-provided URL directly
 import { useNotifications } from '../contexts/NotificationContext';
 
 interface ConfirmDialogProps {
@@ -106,7 +107,7 @@ export default function MyServices() {
   logger.debug('Cargando servicios del usuario en MyServices...');
       getUserServices();
     }
-  }, [isAuthenticated, user, services.length, getUserServices]);
+  }, [isAuthenticated, user?.id, services.length]); // Usar user?.id para evitar re-renders innecesarios
 
   // Debug para MyServices
   useEffect(() => {
@@ -157,16 +158,8 @@ export default function MyServices() {
           message: successMessage
         });
         
-        // Para cambio de estado (toggle), recargar la página completa
-        if (action === 'toggle') {
-          // Pequeño delay para mostrar la notificación antes de recargar
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
-        } else {
-          // Para otras acciones, refrescar usando el contexto
-          await getUserServices();
-        }
+        // Refrescar la lista de servicios desde el backend para sincronizar estado
+        await getUserServices();
       } else {
         addNotification({
           type: 'error',
@@ -180,10 +173,8 @@ export default function MyServices() {
         message: `Error inesperado al ${action === 'toggle' ? 'cambiar el estado del' : 'eliminar el'} servicio`
       });
     } finally {
-      // Solo quitar loading si no vamos a recargar la página
-      if (action !== 'toggle') {
-        setLoading(false);
-      }
+      // Asegurar que loading se desactiva siempre
+      setLoading(false);
       setConfirmDialog(prev => ({ ...prev, isOpen: false }));
     }
   };
@@ -227,12 +218,10 @@ export default function MyServices() {
       <div className={`bg-white rounded-lg shadow-md overflow-hidden ${isInactive ? 'opacity-60' : ''}`}>
         <div className="relative">
           <img
-            src={service.image_url}
+            src={service.image_url || service.image}
             alt={service.title}
             className={`w-full h-48 object-cover ${isInactive ? 'grayscale' : ''}`}
-            onError={(e) => {
-              e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Sin+Imagen';
-            }}
+            onError={() => { /* image required on backend */ }}
           />
           <div className="absolute top-4 right-4">
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -310,13 +299,16 @@ export default function MyServices() {
                 service.id,
                 service.title
               )}
-              disabled={loading || !service.isActive}
+              // Solo deshabilitar mientras hay una operación en curso global
+              disabled={loading}
               className={`flex items-center px-3 py-2 rounded-lg transition-colors disabled:opacity-50 ${
-                loading || !service.isActive
+                loading
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                  : service.isActive
+                    ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                    : 'bg-green-100 text-green-700 hover:bg-green-200'
               }`}
-              title={service.isActive ? 'Desactivar servicio' : 'Función no disponible'}
+              title={service.isActive ? 'Desactivar servicio' : 'Activar servicio'}
             >
               {service.isActive ? (
                 <>
@@ -333,9 +325,14 @@ export default function MyServices() {
             
             <button
               onClick={() => openConfirmDialog('delete', service.id, service.title)}
-              disabled={true}
-              className="flex items-center px-3 py-2 bg-gray-200 text-gray-400 rounded-lg cursor-not-allowed transition-colors"
-              title="Función no disponible"
+              // Solo habilitar para el propietario y cuando no haya una operación global
+              disabled={loading || service.providerId !== (user && user.id)}
+              className={`flex items-center px-3 py-2 rounded-lg transition-colors disabled:opacity-50 ${
+                loading || service.providerId !== (user && user.id)
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-red-100 text-red-700 hover:bg-red-200'
+              }`}
+              title={service.providerId === (user && user.id) ? 'Eliminar servicio' : 'Solo el propietario puede eliminar'}
             >
               <Trash2 className="h-4 w-4 mr-1" />
               Eliminar
@@ -437,7 +434,7 @@ export default function MyServices() {
             {services.length > 0 ? (
               <>
                 {loading && (
-                  <div className="fixed top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center">
+                  <div className="fixed bottom-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Procesando...
                   </div>

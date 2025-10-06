@@ -87,6 +87,7 @@ interface AuthContextType {
   logout: () => void;
   searchServices: (query: string, filters?: ServiceFilters) => Service[];
   requestService: (serviceId: string, date: string, time: string) => Promise<{ success: boolean; error?: string }>;
+  createAppointment: (appointment: { service_id: number; date: string; time_slot: string; notes?: string }) => Promise<{ success: boolean; error?: string; data?: any }>;
   respondToRequest: (requestId: string, action: 'accept' | 'reject', rejectionReason?: string) => Promise<{ success: boolean; error?: string }>;
   addToFavorites: (serviceId: string) => void;
   removeFromFavorites: (serviceId: string) => void;
@@ -96,11 +97,18 @@ interface AuthContextType {
   getUserServices: () => Promise<{ success: boolean; data?: any[]; error?: string }>;
   getServices: () => Promise<{ success: boolean; data?: any[]; error?: string }>;
   getServiceById: (serviceId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+  getMyAppointments: () => Promise<{ success: boolean; data?: any[]; error?: string }>;
   getCategories: () => Promise<{ success: boolean; data?: string[]; error?: string }>;
+    getServiceAppointments: (serviceId: string) => Promise<{ success: boolean; data?: any[]; error?: string }>;
+    getAllServiceAppointments: () => Promise<{ success: boolean; error?: string }>;
   toggleServiceStatus: (serviceId: string) => Promise<{ success: boolean; error?: string }>;
   deactivateService: (serviceId: string) => Promise<{ success: boolean; error?: string }>;
   reactivateService: (serviceId: string) => Promise<{ success: boolean; error?: string }>;
   deleteService: (serviceId: string) => Promise<{ success: boolean; error?: string }>;
+  getServiceCalendar: (serviceId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+  getServiceAvailability: (serviceId: string, date: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+  updateUserProfile: (profileData: { name?: string; email?: string; locality?: string; province?: string; phone?: string; }) => Promise<{ success: boolean; error?: string }>;
+  providerRequestsLoaded: boolean;
   isAuthenticated: boolean;
   loading: boolean;
   loginAttempts: number;
@@ -129,6 +137,8 @@ interface CreateServiceData {
   description: string;
   category: string;
   price?: number; // Campo price opcional
+  duration_minutes?: number;
+  booking_window_days?: number;
   zones: Zone[];
   availability: { [key: string]: any }; // Formato objeto para disponibilidad
   image: string;
@@ -150,13 +160,20 @@ let authContextInitialized = false;
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  // Image is required on services now; no fallback logic here.
+
   const [services, setServices] = useState<Service[]>([]);
   const [userRequests, setUserRequests] = useState<ServiceRequest[]>([]);
   const [providerRequests, setProviderRequests] = useState<ServiceRequest[]>([]);
+  const [providerRequestsLoaded, setProviderRequestsLoaded] = useState<boolean>(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [isBlocked, setIsBlocked] = useState(false);
+  
+  // Flags para evitar llamadas concurrentes
+  const [isLoadingServices, setIsLoadingServices] = useState(false);
+  const [isLoadingAppointments, setIsLoadingAppointments] = useState(false);
 
   // Limpiar datos derivados del usuario cuando cambia el usuario (evita datos cacheados de otro usuario)
   useEffect(() => {
@@ -692,7 +709,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: Date.now().toString(),
         serviceId,
         serviceName: service.title,
-        serviceImage: service.image_url || service.image || 'https://via.placeholder.com/400x300?text=Sin+Imagen',
+  serviceImage: (service as any).image_url || (service as any).image,
         clientId: user.id,
         clientName: user.name,
         providerId: service.providerId,
@@ -710,9 +727,99 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Real create appointment using backend API
+  const createAppointment = async (appointment: { service_id: number; date: string; time_slot: string; notes?: string }) => {
+    try {
+      if (!user) {
+        return { success: false, error: 'Debes iniciar sesión para reservar un turno' };
+      }
+
+      const response = await authAPI.createAppointment(appointment);
+
+      if (!response.success) {
+        logger.warn('createAppointment API fallo:', response.error || response.message);
+        return { success: false, error: response.error || response.message };
+      }
+
+      const created = response.data;
+      // Si el backend devuelve el turno creado, añadirlo a userRequests
+      if (created) {
+        setUserRequests(prev => [created, ...prev]);
+      }
+
+      return { success: true, data: created };
+    } catch (error) {
+      logger.error('Error en createAppointment:', error);
+      return { success: false, error: 'Error al crear turno' };
+    }
+  };
+
+  const getServiceCalendar = async (serviceId: string): Promise<{ success: boolean; data?: any; error?: string }> => {
+    try {
+      const response = await authAPI.getServiceCalendar(serviceId);
+      if (!response.success) return { success: false, error: response.error };
+      return { success: true, data: response.data };
+    } catch (error) {
+      logger.error('Error en getServiceCalendar:', error);
+      return { success: false, error: 'Error del servidor' };
+    }
+  };
+
+  const getServiceAvailability = async (serviceId: string, date: string): Promise<{ success: boolean; data?: any; error?: string }> => {
+    try {
+      const response = await authAPI.getServiceAvailability(serviceId, date);
+      if (!response.success) return { success: false, error: response.error };
+      return { success: true, data: response.data };
+    } catch (error) {
+      logger.error('Error en getServiceAvailability:', error);
+      return { success: false, error: 'Error del servidor' };
+    }
+  };
+
+  const updateUserProfile = async (profileData: { name?: string; email?: string; locality?: string; province?: string; phone?: string; }): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const resp = await authAPI.updateProfile(profileData);
+      if (!resp.success) return { success: false, error: resp.error };
+
+      // Actualizar estado local del usuario (si hay datos)
+      if (resp.data && resp.data.user) {
+        const updated = resp.data.user;
+        const newUser: User = {
+          id: updated.id?.toString() || user?.id || 'unknown',
+          name: updated.name || user?.name || '',
+          email: updated.email || user?.email || '',
+          phone: updated.phone || user?.phone || '',
+          province: updated.province || user?.province || '',
+          locality: updated.locality || user?.locality || '',
+          avatar: user?.avatar,
+          rating: user?.rating,
+          reviewCount: user?.reviewCount,
+          completedJobs: user?.completedJobs,
+          experience: user?.experience,
+          description: user?.description,
+          services: user?.services,
+          certifications: user?.certifications,
+          verified: user?.verified,
+          createdAt: updated.created_at || user?.createdAt
+        };
+        setUser(newUser);
+        userStorage.setUser(newUser);
+      }
+
+      return { success: true };
+    } catch (error) {
+      logger.error('Error en updateUserProfile:', error);
+      return { success: false, error: 'Error actualizando perfil' };
+    }
+  };
+
   const respondToRequest = async (requestId: string, action: 'accept' | 'reject', rejectionReason?: string): Promise<{ success: boolean; error?: string }> => {
     try {
+      // Call backend to update status
+      const resp = await authAPI.updateAppointmentStatus(requestId, action === 'accept' ? 'accepted' : 'rejected', { rejectionReason });
+      if (!resp.success) return { success: false, error: resp.error };
 
+      // Update local state to reflect backend
       setProviderRequests(prev => prev.map(request =>
         request.id === requestId
           ? {
@@ -722,7 +829,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           : request
       ));
-      
+
       setUserRequests(prev => prev.map(request =>
         request.id === requestId
           ? {
@@ -732,9 +839,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           : request
       ));
-      
+
       return { success: true };
     } catch (error) {
+      logger.error('Error en respondToRequest:', error);
       return { success: false, error: 'Error del servidor' };
     }
   };
@@ -786,22 +894,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Mapear datos del frontend al formato del backend
+      // Normalizar availability a { day: ['HH:MM-HH:MM', ...], ... }
+      const normalizeAvailabilityToBackend = (availabilityInput: any) => {
+        const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+        const result: Record<string, string[]> = {};
+
+        if (!availabilityInput) return result;
+
+        // Si viene como array [{day, timeSlots: [{start,end}]}]
+        if (Array.isArray(availabilityInput)) {
+          availabilityInput.forEach((entry: any) => {
+            if (entry.day && Array.isArray(entry.timeSlots)) {
+              result[entry.day] = entry.timeSlots.map((ts: any) => `${ts.start}-${ts.end}`);
+            }
+          });
+          return result;
+        }
+
+        // Si viene como objeto por día
+        if (typeof availabilityInput === 'object') {
+          for (const d of days) {
+            const val = availabilityInput[d];
+            if (!val) continue;
+
+            // Si es un array de strings
+            if (Array.isArray(val) && val.length && typeof val[0] === 'string') {
+              result[d] = val;
+              continue;
+            }
+
+            // Si es objeto con timeSlots
+            if (Array.isArray(val.timeSlots)) {
+              result[d] = val.timeSlots.map((ts: any) => `${ts.start}-${ts.end}`);
+              continue;
+            }
+          }
+        }
+
+        return result;
+      };
+
       const backendServiceData: any = {
         title: serviceData.title,
         description: serviceData.description,
         category: serviceData.category,
-        price: serviceData.price || 0, // Usar el precio del formulario o 0 por defecto
-        availability: {
-          monday: { available: false },
-          tuesday: { available: false },
-          wednesday: { available: false },
-          thursday: { available: false },
-          friday: { available: false },
-          saturday: { available: false },
-          sunday: { available: false },
-          // Mapear desde el formato frontend (objeto)
-          ...serviceData.availability
-        },
+        price: Number(serviceData.price) || 0,
+        // Añadir duración y ventana si están presentes en el formulario
+        duration_minutes: Number((serviceData as any).durationMinutes) || Number((serviceData as any).duration_minutes) || 60,
+        booking_window_days: Number((serviceData as any).bookingWindowDays) || Number((serviceData as any).booking_window_days) || 30,
+        availability: normalizeAvailabilityToBackend(serviceData.availability),
         zones: serviceData.zones
           .filter(zone => zone.province && zone.locality)
           .map(zone => ({
@@ -809,14 +950,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             locality: zone.locality,
             neighborhood: zone.neighborhood || ""
           })),
-        image_url: serviceData.image
+  image_url: serviceData.image || (serviceData as any).image_url,
       };
 
-      const response = await authAPI.createService(backendServiceData);
+  // Mostrar payload explícitamente en consola para debugging (no depende de VITE_DEBUG)
+  console.log('Payload enviado a createService:', backendServiceData);
+  const response = await authAPI.createService(backendServiceData);
       
       if (response.success && response.data) {
   logger.info('Servicio creado exitosamente:', response.data);
-        // Aquí podrías actualizar el estado local si es necesario
+        // Mapear la respuesta del backend al modelo de frontend y actualizar el estado
+        const created = response.data;
+        const mappedService: Service = {
+          id: created.id.toString(),
+          title: created.title,
+          description: created.description,
+          category: created.category,
+          providerId: user.id,
+          providerName: user.name,
+          providerAvatar: user.avatar,
+          rating: 0,
+          reviewCount: 0,
+          price: created.price,
+            image: created.image_url || (created as any).image || '',
+          image_url: created.image_url,
+          zones: Array.isArray(created.zones) ? created.zones : [],
+          availability: created.availability || [],
+          isActive: created.status === 'active',
+          createdAt: created.created_at || new Date().toISOString()
+        };
+
+        // Prepend para que aparezca inmediatamente en la lista del usuario
+        setServices(prev => [mappedService, ...prev]);
+
         return { success: true };
       } else {
         return { success: false, error: response.error || 'Error desconocido' };
@@ -835,36 +1001,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   logger.debug('Datos de entrada updateService:', serviceData);
 
-      // Mapear datos del frontend al formato del backend
+      // Reutilizar la normalización de availability creada para createService
+      const normalizeAvailabilityToBackend = (availabilityInput: any) => {
+        const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+        const result: Record<string, string[]> = {};
+
+        if (!availabilityInput) return result;
+
+        if (Array.isArray(availabilityInput)) {
+          availabilityInput.forEach((entry: any) => {
+            if (entry.day && Array.isArray(entry.timeSlots)) {
+              result[entry.day] = entry.timeSlots.map((ts: any) => `${ts.start}-${ts.end}`);
+            }
+          });
+          return result;
+        }
+
+        if (typeof availabilityInput === 'object') {
+          for (const d of days) {
+            const val = availabilityInput[d];
+            if (!val) continue;
+
+            if (Array.isArray(val) && val.length && typeof val[0] === 'string') {
+              result[d] = val;
+              continue;
+            }
+
+            if (Array.isArray(val.timeSlots)) {
+              result[d] = val.timeSlots.map((ts: any) => `${ts.start}-${ts.end}`);
+              continue;
+            }
+          }
+        }
+
+        return result;
+      };
+
       const backendServiceData: any = {
         title: serviceData.title,
         description: serviceData.description,
         category: serviceData.category,
-        price: serviceData.price || 0, // Incluir el precio
-        availability: {
-          monday: { available: false },
-          tuesday: { available: false },
-          wednesday: { available: false },
-          thursday: { available: false },
-          friday: { available: false },
-          saturday: { available: false },
-          sunday: { available: false },
-          // Mapear desde el formato frontend (objeto)
-          ...serviceData.availability
-        },
+        price: Number(serviceData.price) || 0,
+        duration_minutes: Number((serviceData as any).durationMinutes) || Number((serviceData as any).duration_minutes) || 60,
+        booking_window_days: Number((serviceData as any).bookingWindowDays) || Number((serviceData as any).booking_window_days) || 30,
+        availability: normalizeAvailabilityToBackend(serviceData.availability),
         zones: serviceData.zones
           .filter(zone => zone.province && zone.locality)
           .map(zone => ({
-            province: zone.province,      // Backend Go struct espera Province pero API TypeScript espera province
-            locality: zone.locality,      // Usando lowercase para coincidir con la respuesta de la API
+            province: zone.province,
+            locality: zone.locality,
             neighborhood: zone.neighborhood || ""
           })),
-        image_url: serviceData.image
+  image_url: serviceData.image || (serviceData as any).image_url,
       };
 
-  logger.debug('Datos enviados al backend:', backendServiceData);
+    // Mostrar payload explícitamente en consola para debugging (no depende de VITE_DEBUG)
+    console.log('Payload enviado a updateService:', backendServiceData);
+    logger.debug('Datos enviados al backend:', backendServiceData);
 
-      const response = await authAPI.updateService(serviceId, backendServiceData);
+    const response = await authAPI.updateService(serviceId, backendServiceData);
       
   logger.debug('Respuesta del backend:', response);
 
@@ -906,19 +1101,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'Debes estar autenticado para obtener tus servicios' };
       }
 
+      if (isLoadingServices) {
+        logger.debug('getUserServices ya está en progreso, saltando...');
+        return { success: true, data: services };
+      }
+
+      setIsLoadingServices(true);
       logger.debug('Obteniendo mis servicios...');
       const response = await authAPI.getUserServices();
       
       if (response.success && response.data) {
         logger.info('Mis servicios obtenidos');
-        
+        // Normalizar la forma: puede venir como ServiceResponse[] o como { services: ServiceResponse[] }
+        const rawData: any = response.data;
+        const servicesList: any[] = Array.isArray(rawData)
+          ? rawData
+          : (rawData.services || rawData.data || []);
+
         // Log para debug: ver qué status recibimos
-        response.data.forEach((service: any, index: number) => {
+        servicesList.forEach((service: any, index: number) => {
           logger.debug(`Servicio ${index + 1}: "${service.title}" - Status: "${service.status}"`);
         });
-        
+
         // Mapear ServiceResponse[] a Service[] y actualizar el estado
-        const mappedServices: Service[] = response.data.map((serviceResponse: any) => {
+        const mappedServices: Service[] = servicesList.map((serviceResponse: any) => {
           const mappedService = {
             id: serviceResponse.id.toString(),
             title: serviceResponse.title,
@@ -930,7 +1136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             rating: 0,
             reviewCount: 0,
             price: serviceResponse.price,
-            image: serviceResponse.image_url || 'https://via.placeholder.com/400x300?text=Sin+Imagen',
+            image: serviceResponse.image_url || (serviceResponse as any).image || '',
             image_url: serviceResponse.image_url,
             zones: Array.isArray(serviceResponse.zones) ? serviceResponse.zones : [],
             availability: serviceResponse.availability || [],
@@ -946,22 +1152,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const activeCount = mappedServices.filter(s => s.isActive).length;
   logger.info(`Servicios actualizados en el estado: ${mappedServices.length} total, ${activeCount} activos`);
         
-        return { success: true, data: response.data };
+        return { success: true, data: servicesList };
       } else {
         return { success: false, error: response.error || 'Error al obtener servicios' };
       }
       } catch (error) {
       logger.error('Error en getUserServices:', error);
       return { success: false, error: 'Error del servidor' };
+    } finally {
+      setIsLoadingServices(false);
     }
-  }, [user?.id, user?.name, user?.avatar]); // Incluir dependencias necesarias para el mapeo
+  }, [user?.id, user?.name, user?.avatar, isLoadingServices, services]); // Incluir dependencias necesarias para el mapeo
 
   const getServices = useCallback(async (): Promise<{ success: boolean; data?: any[]; error?: string }> => {
     try {
       const response = await authAPI.getServices();
-      
       if (response.success && response.data) {
-        return { success: true, data: response.data };
+        // Normalizar la respuesta: puede venir como arreglo o como { services: [...] }
+        const rawData: any = response.data;
+        const servicesList: any[] = Array.isArray(rawData)
+          ? rawData
+          : (rawData.services || rawData.data || []);
+        return { success: true, data: servicesList };
       } else {
         return { success: false, error: response.error || 'Error al obtener servicios' };
       }
@@ -987,6 +1199,149 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Obtener los turnos del usuario autenticado (cliente)
+  const getMyAppointments = useCallback(async (): Promise<{ success: boolean; data?: any[]; error?: string }> => {
+    try {
+      if (!user) return { success: false, error: 'Debes iniciar sesión' };
+      const resp = await authAPI.getMyAppointments();
+      if (!resp.success) return { success: false, error: resp.error };
+
+      const appointments = Array.isArray(resp.data) ? resp.data : [];
+
+      // Mapear al formato ServiceRequest que usa la UI
+      const mapped = appointments.map((a: any) => {
+        const svc = a.service || {};
+        return {
+          id: a.id?.toString() || Date.now().toString(),
+          serviceId: svc.id?.toString() || '',
+          serviceName: svc.title || 'Servicio',
+          serviceImage: (svc as any).image_url || (svc as any).image,
+          clientId: a.client_id?.toString() || user.id,
+          clientName: user.name,
+          providerId: a.provider_id?.toString() || '',
+          providerName: svc.providerName || svc.provider_name || '',
+          requestedDate: a.date,
+          requestedTime: a.time_slot,
+          status: a.status,
+          rejectionReason: (a as any).rejection_reason || (a as any).rejectionReason || undefined,
+          createdAt: a.created_at || a.createdAt || new Date().toISOString()
+        } as ServiceRequest;
+      });
+
+      setUserRequests(mapped);
+      return { success: true, data: appointments };
+    } catch (error) {
+      logger.error('Error en getMyAppointments:', error);
+      return { success: false, error: 'Error al obtener mis turnos' };
+    }
+  }, [user?.id, user?.name]);
+
+  // Obtener los turnos de un servicio (para el proveedor que lo ofrece)
+  const getServiceAppointments = useCallback(async (serviceId: string): Promise<{ success: boolean; data?: any[]; error?: string }> => {
+    try {
+      if (!user) return { success: false, error: 'Debes iniciar sesión' };
+      const resp = await authAPI.getServiceAppointments(serviceId);
+      if (!resp.success) return { success: false, error: resp.error };
+
+      const appointments = Array.isArray(resp.data) ? resp.data : [];
+
+      // Mapear al formato ServiceRequest que usa la UI
+      const mapped = appointments.map((a: any) => {
+        const svc = a.service || a.service_data || {};
+        return {
+          id: a.id?.toString() || Date.now().toString(),
+          serviceId: svc.id?.toString() || serviceId,
+          serviceName: svc.title || svc.name || 'Servicio',
+          serviceImage: (svc as any).image_url || (svc as any).image || '',
+          clientId: a.client_id?.toString() || a.client?.id?.toString() || '',
+          clientName: a.client_name || a.client?.name || 'Cliente',
+          providerId: a.provider_id?.toString() || a.provider?.id?.toString() || user.id,
+          providerName: a.provider_name || a.provider?.name || user.name,
+          requestedDate: a.date,
+          requestedTime: a.time_slot,
+          status: a.status,
+          rejectionReason: (a as any).rejection_reason || (a as any).rejectionReason || undefined,
+          createdAt: a.created_at || a.createdAt || new Date().toISOString()
+        } as ServiceRequest;
+      });
+
+  setProviderRequests(mapped);
+  setProviderRequestsLoaded(true);
+      return { success: true, data: appointments };
+    } catch (error) {
+      logger.error('Error en getServiceAppointments:', error);
+      return { success: false, error: 'Error al obtener los turnos del servicio' };
+    }
+  }, [user?.id, user?.name]);
+
+  // Obtener turnos de todos los servicios del proveedor y consolidarlos en providerRequests
+  const getAllServiceAppointments = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (!user) return { success: false, error: 'Debes iniciar sesión' };
+      if (isLoadingAppointments) {
+        logger.debug('getAllServiceAppointments ya está en progreso, saltando...');
+        return { success: true };
+      }
+
+      setIsLoadingAppointments(true);
+      
+      // Si no hay servicios en memoria, intentar recargarlos
+      let svcList = services;
+      if (!svcList || svcList.length === 0) {
+        logger.debug('No hay servicios en memoria, recargando...');
+        const resp = await getUserServices();
+        if (resp.success && resp.data) {
+          svcList = resp.data;
+        } else {
+          logger.debug('No se pudieron cargar los servicios, usando lista vacía');
+          svcList = [];
+        }
+      }
+
+      // Recolectar promises para cada servicio
+      const allAppointments: ServiceRequest[] = [];
+      for (const s of svcList) {
+        try {
+          const resp = await authAPI.getServiceAppointments((s as any).id.toString());
+          if (resp.success && Array.isArray(resp.data)) {
+            const mapped = resp.data.map((a: any) => {
+              const svc = a.service || a.service_data || s;
+              return {
+                id: a.id?.toString() || Date.now().toString(),
+                serviceId: svc.id?.toString() || (s as any).id?.toString() || '',
+                serviceName: svc.title || svc.name || (s as any).title || 'Servicio',
+                serviceImage: (svc as any).image_url || (svc as any).image || (s as any).image_url || (s as any).image || '',
+                clientId: a.client_id?.toString() || a.client?.id?.toString() || '',
+                clientName: a.client_name || a.client?.name || '',
+                providerId: a.provider_id?.toString() || a.provider?.id?.toString() || user.id,
+                providerName: a.provider_name || a.provider?.name || user.name,
+                requestedDate: a.date,
+                requestedTime: a.time_slot,
+                status: a.status,
+                rejectionReason: (a as any).rejection_reason || (a as any).rejectionReason || undefined,
+                createdAt: a.created_at || a.createdAt || new Date().toISOString()
+              } as ServiceRequest;
+            });
+            allAppointments.push(...mapped);
+          }
+        } catch (e) {
+          logger.debug('Error cargando appointments para servicio', (s as any).id, e);
+        }
+      }
+
+      // Ordenar por fecha descendente
+      allAppointments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setProviderRequests(allAppointments);
+      setProviderRequestsLoaded(true);
+      return { success: true };
+    } catch (error) {
+      logger.error('Error en getAllServiceAppointments:', error);
+      return { success: false, error: 'Error al obtener los turnos de los servicios' };
+    } finally {
+      setIsLoadingAppointments(false);
+    }
+  }, [user?.id, user?.name, services, getUserServices, isLoadingAppointments]); // Incluimos las dependencias necesarias
+
   const getCategories = useCallback(async (): Promise<{ success: boolean; data?: string[]; error?: string }> => {
     try {
       const response = await authAPI.getCategories();
@@ -1010,18 +1365,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'Debes estar autenticado para cambiar el estado del servicio' };
       }
 
-      const response = await authAPI.toggleServiceStatus(serviceId);
-      
-      if (response.success) {
-        logger.info('Estado del servicio cambiado');
-        
-        // Actualizar estado local si es necesario
-        // Nota: Como no sabemos el nuevo estado exacto del backend, refrescar los servicios
+      // Determinar el nuevo estado según el servicio actual en memoria
+      const current = services.find(s => s.id === serviceId);
+      const newStatus = current && current.isActive ? 'inactive' : 'active';
+
+      // Llamar al API con el status en el body
+      const response = await authAPI.toggleServiceStatus(serviceId, newStatus);
+
+      if (!response.success) {
+        return { success: false, error: response.error || 'Error al cambiar estado del servicio' };
+      }
+
+      // Si la API nos devolvió el recurso actualizado, usarlo para actualizar el estado local
+      if (response.data) {
+        const updated = response.data;
+        const updatedMapped: Service = {
+          id: updated.id.toString(),
+          title: updated.title,
+          description: updated.description,
+          category: updated.category,
+          providerId: user.id,
+          providerName: user.name,
+          providerAvatar: user.avatar,
+          rating: 0,
+          reviewCount: 0,
+          price: updated.price,
+          image: updated.image_url || (updated as any).image || '',
+          image_url: updated.image_url,
+          zones: Array.isArray(updated.zones) ? updated.zones : [],
+          availability: updated.availability || [],
+          isActive: updated.status === 'active',
+          createdAt: updated.created_at || new Date().toISOString()
+        };
+
+        setServices(prev => prev.map(s => s.id === serviceId ? updatedMapped : s));
+      } else {
+        // Si la API no devuelve data, recargar la lista de servicios para sincronizar
         const userServicesResponse = await authAPI.getUserServices();
         if (userServicesResponse.success && userServicesResponse.data) {
-          logger.debug('Refrescando servicios después de toggle...');
-          
-          // Mapear ServiceResponse[] a Service[]
           const mappedServices: Service[] = userServicesResponse.data.map((serviceResponse: any) => {
             const mappedService = {
               id: serviceResponse.id.toString(),
@@ -1031,33 +1412,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               providerId: user.id,
               providerName: user.name,
               providerAvatar: user.avatar,
-              rating: 0, // No disponible en ServiceResponse
-              reviewCount: 0, // No disponible en ServiceResponse
+              rating: 0,
+              reviewCount: 0,
               price: serviceResponse.price,
-              image: serviceResponse.image_url || 'https://via.placeholder.com/400x300?text=Sin+Imagen',
+              image: serviceResponse.image_url || (serviceResponse as any).image || '',
               image_url: serviceResponse.image_url,
               zones: Array.isArray(serviceResponse.zones) ? serviceResponse.zones : [],
               availability: serviceResponse.availability || [],
               isActive: serviceResponse.status === 'active',
               createdAt: serviceResponse.created_at || new Date().toISOString()
             };
-            
-            if (serviceResponse.id.toString() === serviceId) {
-              logger.debug(`Servicio toggleado "${mappedService.title}": status="${serviceResponse.status}" → isActive=${mappedService.isActive}`);
-            }
-            
             return mappedService;
           });
-          
+
           setServices(mappedServices);
-          const activeCount = mappedServices.filter(s => s.isActive).length;
-          logger.info(`Servicios refrescados: ${mappedServices.length} total, ${activeCount} activos`);
         }
-        
-        return { success: true };
-      } else {
-        return { success: false, error: response.error || 'Error al cambiar estado del servicio' };
       }
+
+      return { success: true };
     } catch (error) {
       logger.error('Error en toggleServiceStatus:', error);
       return { success: false, error: 'Error del servidor' };
@@ -1114,16 +1486,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'Debes estar autenticado para eliminar servicios' };
       }
 
-      // Eliminar servicio de memoria
-      setServices(prevServices => 
-        prevServices.filter(service => 
-          !(service.id === serviceId && service.providerId === user.id)
-        )
-      );
+      // Llamar al API para eliminar el servicio
+      const response = await authAPI.deleteService(serviceId);
 
-  logger.info('Service deleted:', serviceId);
+      if (!response.success) {
+        logger.warn('deleteService API error:', response.error);
+        return { success: false, error: response.error || 'Error al eliminar servicio' };
+      }
+
+      // Si la API respondió con éxito, actualizar el estado local
+      // Preferimos recargar la lista del usuario para asegurar sincronización completa
+      const userServicesResponse = await authAPI.getUserServices();
+      if (userServicesResponse.success && userServicesResponse.data) {
+        const mappedServices: Service[] = userServicesResponse.data.map((serviceResponse: any) => {
+          return {
+            id: serviceResponse.id.toString(),
+            title: serviceResponse.title,
+            description: serviceResponse.description,
+            category: serviceResponse.category,
+            providerId: user.id,
+            providerName: user.name,
+            providerAvatar: user.avatar,
+            rating: 0,
+            reviewCount: 0,
+            price: serviceResponse.price,
+            image: serviceResponse.image_url || (serviceResponse as any).image || '',
+            image_url: serviceResponse.image_url,
+            zones: Array.isArray(serviceResponse.zones) ? serviceResponse.zones : [],
+            availability: serviceResponse.availability || [],
+            isActive: serviceResponse.status === 'active',
+            createdAt: serviceResponse.created_at || new Date().toISOString()
+          };
+        });
+
+        setServices(mappedServices);
+      } else {
+        // Como fallback, eliminar localmente si la recarga falla
+        setServices(prevServices => prevServices.filter(s => s.id !== serviceId));
+      }
+
+      logger.info('Service deleted (API):', serviceId);
       return { success: true };
     } catch (error) {
+      logger.error('Error en deleteService:', error);
       return { success: false, error: 'Error del servidor' };
     }
   };
@@ -1154,6 +1559,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     searchServices,
     requestService,
+    createAppointment,
     respondToRequest,
     addToFavorites,
     removeFromFavorites,
@@ -1161,9 +1567,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     createService,
     updateService,
     getUserServices,
+    getAllServiceAppointments,
     getServices,
     getServiceById,
     getCategories,
+  providerRequestsLoaded,
+  getServiceCalendar,
+  getServiceAvailability,
+    getMyAppointments,
+    getServiceAppointments,
+  updateUserProfile,
     toggleServiceStatus,
     deactivateService,
     reactivateService,

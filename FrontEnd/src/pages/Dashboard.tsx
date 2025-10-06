@@ -68,7 +68,45 @@ const StatCard: React.FC<StatCardProps> = ({ icon, title, value, color }) => (
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, loading, userRequests, providerRequests, favorites, services, getUserServices } = useAuth();
+  const { user, isAuthenticated, loading, userRequests, providerRequests, favorites, services, getUserServices, getMyAppointments, getAllServiceAppointments } = useAuth();
+
+  // Cargar datos del dashboard de forma inteligente
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    // Solo ejecutar si realmente necesitamos cargar datos
+    const loadDashboardData = async () => {
+      try {
+        // 1. Cargar appointments del usuario (siempre actualizamos para tener datos frescos)
+        if (getMyAppointments) {
+          await getMyAppointments();
+        }
+      } catch (e) {
+        logger.debug('Error refrescando mis solicitudes en Dashboard:', e);
+      }
+
+      try {
+        // 2. Cargar servicios solo si no tenemos ninguno
+        if (getUserServices && services.length === 0) {
+          logger.debug('Cargando servicios del usuario en Dashboard...');
+          await getUserServices();
+        }
+      } catch (e) {
+        logger.debug('Error refrescando mis servicios en Dashboard:', e);
+      }
+
+      try {
+        // 3. Cargar appointments de servicios para el contador
+        if (getAllServiceAppointments) {
+          await getAllServiceAppointments();
+        }
+      } catch (e) {
+        logger.debug('Error refrescando solicitudes recibidas en Dashboard:', e);
+      }
+    };
+
+    loadDashboardData();
+  }, [isAuthenticated, user?.id, services.length]); // Solo depende de autenticación y datos clave
 
   // Verificar autenticación en useEffect para evitar problemas de renderizado
   useEffect(() => {
@@ -78,14 +116,6 @@ export default function Dashboard() {
       navigate('/login');
     }
   }, [loading, isAuthenticated, user, navigate]);
-
-  // Cargar servicios del usuario cuando se autentica
-  useEffect(() => {
-    if (isAuthenticated && user && services.length === 0) {
-  logger.debug('Cargando servicios del usuario en Dashboard...');
-      getUserServices();
-    }
-  }, [isAuthenticated, user, services.length, getUserServices]);
 
   // Mostrar loading mientras inicializa o mientras no está autenticado
   if (loading || !isAuthenticated || !user) {
@@ -177,6 +207,16 @@ export default function Dashboard() {
       : status === 'accepted'
       ? 'bg-green-100 text-green-800'
       : 'bg-red-100 text-red-800';
+
+  const formatDateForDashboard = (dateStr?: string) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+    } catch (e) {
+      return dateStr;
+    }
+  };
 
   const statsConfig = [
     {
@@ -292,7 +332,7 @@ export default function Dashboard() {
                   <div key={request.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
                       <p className="font-medium text-gray-900">{request.serviceName}</p>
-                      <p className="text-sm text-gray-600">{request.date} - {request.time}</p>
+                      <p className="text-sm text-gray-600">{formatDateForDashboard(request.requestedDate)}{request.requestedTime ? ` · ${request.requestedTime}` : ''}</p>
                     </div>
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(request.status)}`}>
                       {request.status === 'pending' ? 'Pendiente' : request.status === 'accepted' ? 'Aceptada' : 'Rechazada'}
@@ -320,7 +360,7 @@ export default function Dashboard() {
                   <div key={request.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
                       <p className="font-medium text-gray-900">{request.serviceName}</p>
-                      <p className="text-sm text-gray-600">De: {request.userName}</p>
+                      <p className="text-sm text-gray-600">{formatDateForDashboard(request.requestedDate)}{request.requestedTime ? ` · ${request.requestedTime}` : ''}</p>
                     </div>
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(request.status)}`}>
                       {request.status === 'pending' ? 'Pendiente' : request.status === 'accepted' ? 'Aceptada' : 'Rechazada'}

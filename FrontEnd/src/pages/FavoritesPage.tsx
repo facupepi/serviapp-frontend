@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, MapPin, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+// Image is required on services; use service-provided URL directly
 
 export default function FavoritesPage() {
   const navigate = useNavigate();
@@ -79,12 +80,10 @@ export default function FavoritesPage() {
               >
                 <div className="relative">
                   <img
-                    src={service.image_url}
+                    src={service.image_url || service.image}
                     alt={service.title}
                     className="w-full h-48 object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Sin+Imagen';
-                    }}
+                     onError={() => { /* image required on backend */ }}
                   />
                   <button
                     onClick={(e) => handleRemoveFavorite(service.id, e)}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import logger from '../utils/logger';
 import { MapPin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+// Image is required on services; use service-provided URL directly
 import { Service } from '../types/api';
 
 export default function FeaturedProviders() {
@@ -105,25 +106,10 @@ export default function FeaturedProviders() {
                 {/* Service Image */}
                 <div className="relative">
                   <img
-                    src={service.image_url || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop&crop=center'}
+                    src={(service as any).image_url || (service as any).image}
                     alt={service.title}
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      const originalSrc = service.image_url;
-                      const fallback1 = 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop&crop=center';
-                      const fallback2 = 'https://via.placeholder.com/400x300/3B82F6/FFFFFF?text=Servicio';
-                      const fallback3 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjM0I4MkY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5TZXJ2aWNpbzwvdGV4dD48L3N2Zz4=';
-
-                      if (target.src === originalSrc || target.src.includes('unsplash.com')) {
-                        target.src = fallback1;
-                      } else if (target.src === fallback1) {
-                        target.src = fallback2;
-                      } else if (target.src === fallback2) {
-                        target.src = fallback3;
-                      }
-                    }}
-                    onLoad={undefined}
+                      onError={() => { /* image is required on backend */ }}
                   />
                   <div className="absolute top-3 right-3">
                     <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
