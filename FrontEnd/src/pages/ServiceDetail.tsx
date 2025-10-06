@@ -251,9 +251,10 @@ const ServiceDetail = () => {
       }
 
       // Use backend endpoint to create appointment
+      // The API expects the date in plain YYYY-MM-DD format (no time).
       const appointmentPayload = {
         service_id: Number(serviceData.id),
-        date: selectedDate,
+        date: (/^\d{4}-\d{2}-\d{2}$/.test(selectedDate) ? selectedDate : selectedDate),
         time_slot: selectedTime,
         notes: requestMessage || undefined
       };
@@ -371,6 +372,13 @@ const ServiceDetail = () => {
     const norm = normalizeAvailability(serviceData.availability);
     const dayEntry = norm[dayKey];
     return !!(dayEntry && dayEntry.timeSlots && dayEntry.timeSlots.length > 0);
+  };
+
+  // Parse a YYYY-MM-DD string into a local Date object (avoids UTC parsing)
+  const parseLocalDate = (dateStr: string) => {
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return new Date(dateStr);
+    const [y, m, d] = dateStr.split('-').map((v) => parseInt(v, 10));
+    return new Date(y, m - 1, d);
   };
 
   // Fecha mínima (hoy) y máxima (próximos 30 días) para reservas
@@ -729,7 +737,7 @@ const ServiceDetail = () => {
                         Horarios disponibles
                       </label>
                       <p className="text-sm text-gray-500 mt-1">
-                        {new Date(selectedDate).toLocaleDateString('es-ES', { 
+                        {parseLocalDate(selectedDate).toLocaleDateString('es-ES', { 
                           weekday: 'long', 
                           year: 'numeric', 
                           month: 'long', 

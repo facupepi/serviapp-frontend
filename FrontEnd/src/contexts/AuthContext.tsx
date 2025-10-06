@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { authAPI, UserRegister as BackendUserRegister } from '../api/auth';
 import { tokenStorage, userStorage } from '../utils/storage';
 import logger from '../utils/logger';
+import { NotificationContext } from './NotificationContext';
 
 interface User {
   id: string;
@@ -109,6 +110,7 @@ interface AuthContextType {
   getServiceAvailability: (serviceId: string, date: string) => Promise<{ success: boolean; data?: any; error?: string }>;
   updateUserProfile: (profileData: { name?: string; email?: string; locality?: string; province?: string; phone?: string; }) => Promise<{ success: boolean; error?: string }>;
   providerRequestsLoaded: boolean;
+  isLoadingAppointments: boolean;
   isAuthenticated: boolean;
   loading: boolean;
   loginAttempts: number;
@@ -158,6 +160,9 @@ export const useAuth = () => {
 let authContextInitialized = false;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // Notifications (safe: useContext will return undefined if provider not present)
+  const notifCtx = useContext(NotificationContext);
+  const addNotification = notifCtx?.addNotification;
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   // Image is required on services now; no fallback logic here.
@@ -721,6 +726,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       setUserRequests(prev => [...prev, newRequest]);
+  try { addNotification?.({ type: 'success', message: 'Solicitud creada correctamente' }); } catch (e) {}
       return { success: true };
     } catch (error) {
       return { success: false, error: 'Error del servidor' };
@@ -738,13 +744,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!response.success) {
         logger.warn('createAppointment API fallo:', response.error || response.message);
+  try { addNotification?.({ type: 'error', message: response.error || response.message || 'Error creando turno' }); } catch(e) {}
         return { success: false, error: response.error || response.message };
       }
 
       const created = response.data;
-      // Si el backend devuelve el turno creado, añadirlo a userRequests
+      // Si el backend devuelve el turno creado, normalizar la fecha a YYYY-MM-DD
       if (created) {
+        try {
+          if (created.date && typeof created.date === 'string') {
+            // Extraer la parte de fecha si viene como ISO timestamp
+            const dateOnly = created.date.split('T')[0];
+            created.date = dateOnly;
+          }
+        } catch (e) {
+          logger.debug('No se pudo normalizar la fecha del turno creado', e);
+        }
+
         setUserRequests(prev => [created, ...prev]);
+        try { addNotification?.({ type: 'success', message: 'Turno reservado correctamente' }); } catch(e) {}
       }
 
       return { success: true, data: created };
@@ -1572,6 +1590,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getServiceById,
     getCategories,
   providerRequestsLoaded,
+  isLoadingAppointments,
   getServiceCalendar,
   getServiceAvailability,
     getMyAppointments,

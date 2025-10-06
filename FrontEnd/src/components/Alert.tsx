@@ -4,7 +4,7 @@ import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 interface AlertProps {
   type: 'success' | 'error' | 'warning' | 'info';
   title?: string;
-  message: string;
+  message: React.ReactNode;
   onClose?: () => void;
   className?: string;
 }
@@ -52,9 +52,9 @@ const Alert: React.FC<AlertProps> = ({ type, title, message, onClose, className 
               {title}
             </h3>
           )}
-          <p className="text-sm">
-            {message}
-          </p>
+                  <div className="text-sm">
+                    {message}
+                  </div>
         </div>
         {onClose && (
           <div className="ml-auto pl-3">

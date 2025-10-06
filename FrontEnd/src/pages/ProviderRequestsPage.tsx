@@ -116,7 +116,7 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
                 )}
               </div>
 
-              {/* Botones con emojis */}
+              {/* Botones con emojis mejorados */}
               {canRespond && (
                 <div className="flex space-x-2 mt-2">
                   <button
@@ -125,7 +125,7 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
                     className="w-8 h-8 flex items-center justify-center bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors disabled:opacity-50 text-sm"
                     title="Aceptar"
                   >
-                    ✅
+                    ✓
                   </button>
                   <button
                     onClick={() => setShowRejectModal(true)}
@@ -133,7 +133,7 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
                     className="w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors disabled:opacity-50 text-sm"
                     title="Rechazar"
                   >
-                    ❌
+                    ✕
                   </button>
                 </div>
               )}
@@ -150,65 +150,69 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
             </div>
           </div>
         ) : (
-          /* Vista no-Kanban: Layout original vertical */
-          <>
-            <div className="p-6 flex flex-col justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2">{request.serviceName}</h3>
-                <div className="flex items-center text-gray-600 text-sm mb-3">
-                  <Calendar className="h-4 w-4 mr-2 text-blue-500" />
-                  <span className="font-medium">
+          /* Vista no-Kanban: Layout horizontal compacto tipo lista */
+          <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-100">
+            <div className="flex items-center p-4">
+              {/* Imagen a la izquierda */}
+              <div className="w-16 h-16 flex-shrink-0 mr-4">
+                <img
+                  src={request.serviceImage}
+                  alt={request.serviceName}
+                  className="w-full h-full object-cover rounded-lg"
+                  onError={() => { /* image required on backend */ }}
+                />
+              </div>
+
+              {/* Información principal */}
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-semibold text-gray-900 truncate">{request.serviceName}</h3>
+                <div className="flex items-center text-gray-600 text-sm mt-1">
+                  <Calendar className="h-4 w-4 mr-1 text-blue-500" />
+                  <span>
                     {requestDate
-                      ? requestDate.toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
+                      ? requestDate.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' })
                       : request.requestedDate}
-                    {request.requestedTime ? ` · ${request.requestedTime}` : ''}
+                    {request.requestedTime ? ` • ${request.requestedTime}` : ''}
                   </span>
                 </div>
+                {request.rejectionReason && (
+                  <p className="text-gray-500 text-xs mt-1 truncate">
+                    Motivo: {request.rejectionReason}
+                  </p>
+                )}
               </div>
-              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(request.status)} w-fit`}>
-                {getStatusIcon(request.status)}
-                <span className="ml-1">{getStatusText(request.status)}</span>
-              </div>
-            </div>
 
-            <div className="px-6 pb-4">
-              <p className="text-gray-600 text-sm mb-4 leading-relaxed">
-                {request.rejectionReason ? `Motivo de rechazo: ${request.rejectionReason}` : ''}
-              </p>
-            </div>
-
-            <div className="mt-3 w-full">
-              <img
-                src={request.serviceImage}
-                alt={request.serviceName}
-                className="w-full h-44 object-cover rounded-b-xl"
-                onError={() => { /* image required on backend */ }}
-              />
-            </div>
-
-            {canRespond && (
-              <div className="border-t pt-4 px-6 pb-4">
-                <div className="flex space-x-3">
-                  <button
-                    onClick={handleAccept}
-                    disabled={loading}
-                    className="flex-1 flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    {loading ? 'Procesando...' : 'Aceptar'}
-                  </button>
-                  <button
-                    onClick={() => setShowRejectModal(true)}
-                    disabled={loading}
-                    className="flex-1 flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Rechazar
-                  </button>
+              {/* Estado */}
+              <div className="flex items-center space-x-4">
+                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(request.status)}`}>
+                  {getStatusIcon(request.status)}
+                  <span className="ml-1">{getStatusText(request.status)}</span>
                 </div>
+
+                {/* Botones de acción */}
+                {canRespond && (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={handleAccept}
+                      disabled={loading}
+                      className="w-8 h-8 flex items-center justify-center bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors disabled:opacity-50"
+                      title="Aceptar"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={() => setShowRejectModal(true)}
+                      disabled={loading}
+                      className="w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors disabled:opacity-50"
+                      title="Rechazar"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </>
+            </div>
+          </div>
         )}
       </div>
 
@@ -252,7 +256,7 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
 
 export default function ProviderRequestsPage() {
   const navigate = useNavigate();
-  const { providerRequests, isAuthenticated, getAllServiceAppointments } = useAuth();
+  const { providerRequests, isAuthenticated, getAllServiceAppointments, isLoadingAppointments } = useAuth();
   const [serviceFilter, setServiceFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
 
@@ -263,7 +267,7 @@ export default function ProviderRequestsPage() {
     }
     
     getAllServiceAppointments();
-  }, [isAuthenticated, navigate, getAllServiceAppointments]);
+  }, [isAuthenticated, navigate]); // Removido getAllServiceAppointments para evitar bucle infinito
 
   const filteredRequests = providerRequests.filter(request => {
     if (serviceFilter === 'all') return true;
@@ -338,7 +342,12 @@ export default function ProviderRequestsPage() {
         </div>
 
         {/* Lista de solicitudes */}
-        {filteredRequests.length === 0 ? (
+        {isLoadingAppointments ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-600">Cargando solicitudes...</span>
+          </div>
+        ) : filteredRequests.length === 0 ? (
           <div className="text-center py-12">
             <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No hay solicitudes</h3>
@@ -362,7 +371,7 @@ export default function ProviderRequestsPage() {
                 ))}
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-3">
                 {filteredRequests.map((request) => (
                   <ProviderRequestCard
                     key={request.id}

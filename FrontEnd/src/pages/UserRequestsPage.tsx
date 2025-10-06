@@ -7,9 +7,10 @@ import { useAuth } from '../contexts/AuthContext';
 interface RequestCardProps {
   request: any;
   onRate?: (requestId: string) => void;
+  kanbanView?: boolean;
 }
 
-const RequestCard: React.FC<RequestCardProps> = ({ request, onRate }) => {
+const RequestCard: React.FC<RequestCardProps> = ({ request, onRate, kanbanView = false }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -54,77 +55,114 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onRate }) => {
     }
   };
 
-  const getStatusDescription = (status: string, rejectionReason?: string) => {
-    switch (status) {
-      case 'pending':
-        return 'Esta solicitud aún no ha sido respondida por el proveedor.';
-      case 'accepted':
-        return 'El proveedor ha confirmado tu solicitud.';
-      case 'rejected':
-        return rejectionReason ? `Motivo: ${rejectionReason}` : 'El proveedor rechazó tu solicitud.';
-      case 'expired':
-        return 'Esta solicitud no fue respondida a tiempo y ha caducado.';
-      default:
-        return '';
-    }
-  };
-
   const requestDate = request.requestedDate ? new Date(request.requestedDate) : null;
   const canRate = request.status === 'accepted' && (requestDate ? requestDate < new Date() : false);
 
   return (
     <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100">
-        <div className="p-6 flex flex-col justify-between">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900 mb-3" style={{
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden'
-            }}>
-              {request.serviceName}
-            </h3>
-            <div className="flex items-center text-gray-600 text-sm mb-3">
-              <Calendar className="h-4 w-4 mr-2 text-blue-500" />
-              <span className="font-medium">
-                {requestDate
-                  ? requestDate.toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
-                  : request.requestedDate}
-                {request.requestedTime ? ` · ${request.requestedTime}` : ''}
-              </span>
+      {kanbanView ? (
+        /* Vista Kanban: Layout horizontal con imagen a la derecha */
+        <div className="flex h-48">
+          {/* Columna izquierda: Información */}
+          <div className="flex-1 p-6 flex flex-col">
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{request.serviceName}</h3>
+              <div className="flex items-center text-gray-600 text-sm mb-3">
+                <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                <span className="font-medium">
+                  {requestDate
+                    ? requestDate.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' })
+                    : request.requestedDate}
+                  {request.requestedTime ? ` · ${request.requestedTime}` : ''}
+                </span>
+              </div>
+              
+              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(request.status)} w-fit mb-3`}>
+                {getStatusIcon(request.status)}
+                <span className="ml-1">{getStatusText(request.status)}</span>
+              </div>
+
+              {request.rejectionReason && (
+                <p className="text-gray-600 text-xs leading-relaxed">
+                  Motivo: {request.rejectionReason}
+                </p>
+              )}
             </div>
+
+            {/* Botón de calificar */}
+            {canRate && onRate && (
+              <div className="mt-2">
+                <button
+                  onClick={() => onRate(request.id)}
+                  className="w-full flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                >
+                  <Star className="h-4 w-4 mr-2" />
+                  Calificar
+                </button>
+              </div>
+            )}
           </div>
-          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(request.status)} w-fit`}>
-            {getStatusIcon(request.status)}
-            <span className="ml-1">{getStatusText(request.status)}</span>
+
+          {/* Columna derecha: Imagen */}
+          <div className="w-32">
+            <img
+              src={request.serviceImage}
+              alt={request.serviceName}
+              className="w-full h-full object-cover"
+              onError={() => { /* image required on backend */ }}
+            />
           </div>
         </div>
-        {/* Image: full-width below content */}
+      ) : (
+        /* Vista no-Kanban: Layout horizontal compacto tipo lista */
+        <div className="flex items-center p-4">
+          {/* Imagen a la izquierda */}
+          <div className="w-16 h-16 flex-shrink-0 mr-4">
+            <img
+              src={request.serviceImage}
+              alt={request.serviceName}
+              className="w-full h-full object-cover rounded-lg"
+              onError={() => { /* image required on backend */ }}
+            />
+          </div>
 
-      <div className="px-6 pb-4">
-        <p className="text-gray-600 text-sm mb-4 leading-relaxed">
-          {getStatusDescription(request.status, request.rejectionReason)}
-        </p>
-      </div>
+          {/* Información principal */}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-semibold text-gray-900 truncate">{request.serviceName}</h3>
+            <div className="flex items-center text-gray-600 text-sm mt-1">
+              <Calendar className="h-4 w-4 mr-1 text-blue-500" />
+              <span>
+                {requestDate
+                  ? requestDate.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' })
+                  : request.requestedDate}
+                {request.requestedTime ? ` • ${request.requestedTime}` : ''}
+              </span>
+            </div>
+            {request.rejectionReason && (
+              <p className="text-gray-500 text-xs mt-1 truncate">
+                Motivo: {request.rejectionReason}
+              </p>
+            )}
+          </div>
 
-      <div className="mt-3 w-full">
-        <img
-          src={request.serviceImage}
-          alt={request.serviceName}
-          className="w-full h-44 object-cover rounded-b-xl"
-            onError={() => { /* image required on backend */ }}
-        />
-      </div>
+          {/* Estado y acciones */}
+          <div className="flex items-center space-x-4">
+            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(request.status)}`}>
+              {getStatusIcon(request.status)}
+              <span className="ml-1">{getStatusText(request.status)}</span>
+            </div>
 
-      {canRate && onRate && (
-        <div className="border-t border-gray-100 px-6 py-4">
-          <button
-            onClick={() => onRate(request.id)}
-            className="flex items-center justify-center w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg"
-          >
-            <Star className="h-4 w-4 mr-2" />
-            Calificar servicio
-          </button>
+            {/* Botón de calificar */}
+            {canRate && onRate && (
+              <button 
+                onClick={() => onRate(request.id)} 
+                className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                <Star className="h-4 w-4" />
+                <span>Calificar</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -210,16 +248,25 @@ export default function UserRequestsPage() {
           <div>
             {/* placeholder to keep spacing */}
           </div>
-          <div className="flex items-center space-x-2">
+          {/* Toggle de vista */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setViewMode('kanban')}
-              className={`px-3 py-1 rounded ${viewMode === 'kanban' ? 'bg-blue-600 text-white' : 'bg-white border'}`}
+              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'kanban'
+                  ? 'bg-white text-blue-700 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
             >
               Kanban
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1 rounded ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white border'}`}
+              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'list'
+                  ? 'bg-white text-blue-700 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
             >
               Lista
             </button>
@@ -227,9 +274,9 @@ export default function UserRequestsPage() {
         </div>
         {sortedRequests.length === 0 ? (
           loadingAppointments ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Cargando turnos...</p>
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-gray-600">Cargando solicitudes...</span>
             </div>
           ) : appointmentsError ? (
             <div className="text-center py-12">
@@ -257,50 +304,26 @@ export default function UserRequestsPage() {
           )
           ) : (
           viewMode === 'kanban' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {sortedRequests.map((request) => (
                 <RequestCard
                   key={request.id}
                   request={request}
                   onRate={handleRate}
+                  kanbanView={true}
                 />
               ))}
             </div>
           ) : (
-            <div className="space-y-4">
-              {sortedRequests.map((request) => {
-                const date = request.requestedDate ? new Date(request.requestedDate) : null;
-                const formattedDate = date ? date.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) : '';
-                const timeRange = request.requestedTime || '';
-                const statusMap: Record<string, string> = {
-                  pending: 'Pendiente',
-                  accepted: 'Aceptada',
-                  rejected: 'Rechazada',
-                  expired: 'Caducada'
-                };
-                const statusLabel = statusMap[request.status] || 'Desconocido';
-                const description = (request as any).description || '';
-
-                return (
-                  <div key={request.id} className="bg-white rounded-lg p-4 shadow border flex items-center space-x-4">
-                    <img src={request.serviceImage} alt={request.serviceName} className="w-28 h-20 object-cover rounded" />
-                    <div className="flex-1">
-                      <h4 className="text-lg font-semibold text-gray-900">{request.serviceName}</h4>
-                      {description ? <p className="text-sm text-gray-600 mt-1">{description}</p> : null}
-                      <div className="mt-2 text-sm text-gray-700">
-                        <span className="font-medium">{formattedDate}</span>
-                        {timeRange ? <span className="text-gray-500"> · {timeRange}</span> : null}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end space-y-2">
-                      <div className="px-3 py-1 rounded-full text-sm font-medium border bg-gray-50 text-gray-800">{statusLabel}</div>
-                      {request.status === 'accepted' && (
-                        <button onClick={() => handleRate(request.id)} className="px-3 py-1 bg-blue-600 text-white rounded">Calificar</button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="space-y-3">
+              {sortedRequests.map((request) => (
+                <RequestCard
+                  key={request.id}
+                  request={request}
+                  onRate={handleRate}
+                  kanbanView={false}
+                />
+              ))}
             </div>
           )
         )}

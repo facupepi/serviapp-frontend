@@ -4,7 +4,7 @@ export interface Notification {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';
   title?: string;
-  message: string;
+  message: React.ReactNode;
   duration?: number;
   onClose?: () => void;
 }
@@ -16,7 +16,7 @@ interface NotificationContextType {
   clearAllNotifications: () => void;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+export const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const useNotifications = () => {
   const context = useContext(NotificationContext);

@@ -31,8 +31,8 @@ import Profile from './pages/Profile';
 
 function App() {
   return (
-    <AuthProvider>
-      <NotificationProvider>
+    <NotificationProvider>
+      <AuthProvider>
         <Router>
           <div className="min-h-screen bg-gray-50 flex flex-col">
             <Header />
@@ -73,8 +73,8 @@ function App() {
             <NotificationContainer />
           </div>
         </Router>
-      </NotificationProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </NotificationProvider>
   );
 }
 

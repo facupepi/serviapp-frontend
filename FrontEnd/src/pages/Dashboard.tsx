@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   User, 
@@ -8,7 +8,7 @@ import {
   Plus,
   Search,
   Shield,
-  Calendar
+  
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import logger from '../utils/logger';
@@ -47,7 +47,7 @@ const QuickActionCard: React.FC<QuickActionCardProps> = ({
 
 interface StatCardProps {
   icon: React.ReactNode;
-  title: string;
+  title: React.ReactNode;
   value: number;
   color: string;
 }
@@ -68,14 +68,14 @@ const StatCard: React.FC<StatCardProps> = ({ icon, title, value, color }) => (
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, loading, userRequests, providerRequests, favorites, services, getUserServices, getMyAppointments, getAllServiceAppointments } = useAuth();
+  const { user, isAuthenticated, loading, userRequests, providerRequests, favorites, services, getUserServices, getMyAppointments, getAllServiceAppointments, isLoadingAppointments, providerRequestsLoaded } = useAuth();
 
   // Cargar datos del dashboard de forma inteligente
   useEffect(() => {
     if (!isAuthenticated || !user) return;
-
     // Solo ejecutar si realmente necesitamos cargar datos
     const loadDashboardData = async () => {
+      setDashboardLoading(true);
       try {
         // 1. Cargar appointments del usuario (siempre actualizamos para tener datos frescos)
         if (getMyAppointments) {
@@ -102,11 +102,15 @@ export default function Dashboard() {
         }
       } catch (e) {
         logger.debug('Error refrescando solicitudes recibidas en Dashboard:', e);
+      } finally {
+        setDashboardLoading(false);
       }
     };
 
     loadDashboardData();
   }, [isAuthenticated, user?.id, services.length]); // Solo depende de autenticación y datos clave
+
+  const [dashboardLoading, setDashboardLoading] = useState(false);
 
   // Verificar autenticación en useEffect para evitar problemas de renderizado
   useEffect(() => {
@@ -126,6 +130,18 @@ export default function Dashboard() {
           <p className="mt-2 text-gray-600">
             {loading ? 'Cargando...' : 'Verificando autenticación...'}
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Mostrar loader mientras cargan los datos del dashboard o mientras las citas del proveedor no estén listas
+  if (dashboardLoading || isLoadingAppointments || !providerRequestsLoaded) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-3 text-gray-600">Cargando información del dashboard...</p>
         </div>
       </div>
     );
@@ -220,16 +236,16 @@ export default function Dashboard() {
 
   const statsConfig = [
     {
+      icon: <MessageSquare className="h-6 w-6 text-white" />,
+      title: 'Solicitudes Recibidas',
+      value: userStats.totalReceivedRequests,
+      color: 'bg-purple-500'
+    },
+    {
       icon: <Clock className="h-6 w-6 text-white" />,
       title: 'Solicitudes Enviadas',
       value: userStats.totalRequests,
       color: 'bg-blue-500'
-    },
-    {
-      icon: <Calendar className="h-6 w-6 text-white" />,
-      title: 'Pendientes',
-      value: userStats.pendingRequests,
-      color: 'bg-orange-500'
     },
     {
       icon: <Heart className="h-6 w-6 text-white" />,
@@ -254,12 +270,6 @@ export default function Dashboard() {
       title: 'Servicios Inactivos',
       value: userStats.inactiveServices,
       color: 'bg-red-500'
-    },
-    {
-      icon: <MessageSquare className="h-6 w-6 text-white" />,
-      title: 'Solicitudes Recibidas',
-      value: userStats.totalReceivedRequests,
-      color: 'bg-purple-500'
     }
   ];
 
@@ -291,7 +301,7 @@ export default function Dashboard() {
         </div>
 
         {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {statsConfig.map((stat, index) => (
             <StatCard
               key={index}
