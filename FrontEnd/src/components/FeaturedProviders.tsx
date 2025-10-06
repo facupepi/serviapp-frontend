@@ -84,16 +84,25 @@ export default function FeaturedProviders() {
         </div>
 
         {featuredServices.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 mb-4">
-              No hay servicios destacados disponibles en este momento.
+          <div className="text-center py-6 flex flex-col items-center">
+            {/* Improved illustrative SVG for empty state */}
+            <svg width="160" height="120" viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-6">
+              <rect x="0" y="0" width="160" height="120" rx="12" fill="#F8FAFC" />
+              <g transform="translate(20,24)">
+                <rect x="0" y="0" width="80" height="56" rx="6" fill="#EFF6FF" />
+                <rect x="92" y="14" width="36" height="36" rx="6" fill="#EEF2FF" />
+                <path d="M92 50 L128 86" stroke="#BFDBFE" strokeWidth="4" strokeLinecap="round" />
+                <circle cx="124" cy="88" r="8" fill="#60A5FA" />
+                <path d="M8 10 H64" stroke="#93C5FD" strokeWidth="3" strokeLinecap="round" />
+                <path d="M8 26 H56" stroke="#93C5FD" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M8 42 H48" stroke="#93C5FD" strokeWidth="2" strokeLinecap="round" />
+              </g>
+            </svg>
+
+            <p className="text-gray-700 font-medium mb-1">
+              No hay servicios destacados disponibles
             </p>
-            <button 
-              onClick={() => navigate('/services')}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg transition-colors"
-            >
-              Ver todos los servicios
-            </button>
+            <p className="text-sm text-gray-500 mb-4">Explorá toda la oferta y encontrá el servicio que necesitás.</p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -157,8 +166,9 @@ export default function FeaturedProviders() {
           </div>
         )}
 
-        <div className="text-center mt-12">
-          <button 
+        {/* Bottom CTA always visible */}
+        <div className={`text-center ${featuredServices.length === 0 ? 'mt-6' : 'mt-12'}`}>
+          <button
             onClick={() => navigate('/services')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg transition-colors"
           >
