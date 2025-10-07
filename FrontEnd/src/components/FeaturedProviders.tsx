@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import logger from '../utils/logger';
 import { MapPin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-// Image is required on services; use service-provided URL directly
 import { Service } from '../types/api';
 
 export default function FeaturedProviders() {

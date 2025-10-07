@@ -8,6 +8,8 @@ import FeaturedProviders from './components/FeaturedProviders';
 import HowItWorks from './components/HowItWorks';
 import Footer from './components/Footer';
 import NotificationContainer from './components/NotificationContainer';
+import ScrollToTop from './components/ScrollToTop';
+import BackToTop from './components/BackToTop';
 import ServicesPage from './pages/ServicesPage';
 import FavoritesPage from './pages/FavoritesPage';
 import UserRequestsPage from './pages/UserRequestsPage';
@@ -34,6 +36,7 @@ function App() {
     <NotificationProvider>
       <AuthProvider>
         <Router>
+          <ScrollToTop />
           <div className="min-h-screen bg-gray-50 flex flex-col">
             <Header />
             <main className="flex-1">
@@ -71,6 +74,7 @@ function App() {
             </main>
             <Footer />
             <NotificationContainer />
+            <BackToTop />
           </div>
         </Router>
       </AuthProvider>
