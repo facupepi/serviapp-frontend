@@ -193,6 +193,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Nota: no tocamos categories (globales) ni loading aquí
   }, [user?.id]);
 
+  // Cargar favoritos cada vez que hay un usuario autenticado
+  useEffect(() => {
+    const loadFavorites = async () => {
+      const token = tokenStorage.getToken();
+      
+      // Primero, cargar favoritos locales inmediatamente
+      const savedFavorites = localStorage.getItem('favorites');
+      if (savedFavorites) {
+        try {
+          const parsedFavorites = JSON.parse(savedFavorites);
+          setFavorites(parsedFavorites);
+          logger.info('✅ Favoritos locales cargados:', parsedFavorites.length);
+        } catch (error) {
+          logger.error('❌ Error parseando favoritos locales:', error);
+          setFavorites([]);
+        }
+      }
+
+      // Si hay usuario autenticado, sincronizar con API
+      if (user && token) {
+        try {
+          logger.debug('🔄 Sincronizando favoritos con API...');
+          const result = await authAPI.getFavorites();
+          
+          if (result.success && result.data) {
+            // Convertir IDs a strings
+            const apiFavorites = result.data.map((f: any) => f.service_id.toString());
+            const localFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+            
+            // Crear unión de ambos sets (sin duplicados)
+            const mergedFavorites = Array.from(new Set([...apiFavorites, ...localFavorites]));
+            
+            setFavorites(mergedFavorites);
+            localStorage.setItem('favorites', JSON.stringify(mergedFavorites));
+            logger.info('✅ Favoritos sincronizados desde API:', mergedFavorites.length);
+          } else {
+            logger.warn('⚠️ No se pudieron cargar favoritos desde API:', result.error);
+          }
+        } catch (error) {
+          logger.error('❌ Error cargando favoritos desde API:', error);
+          // En caso de error, mantener favoritos locales
+        }
+      } else if (!user && !token) {
+        // Si no hay usuario, limpiar favoritos
+        setFavorites([]);
+        logger.info('🔄 Usuario no autenticado, favoritos limpiados');
+      }
+    };
+
+    loadFavorites();
+  }, [user]); // Se ejecuta cada vez que cambia el usuario
+
   useEffect(() => {
     // Prevenir múltiples inicializaciones usando flag global
     if (authContextInitialized) {
@@ -205,7 +257,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Verificar si hay un token guardado al cargar la app
     const token = tokenStorage.getToken();
     const userData = userStorage.getUser();
-    const savedFavorites = localStorage.getItem('favorites');
     const attempts = localStorage.getItem('loginAttempts');
     const blockTime = localStorage.getItem('blockTime');
     
@@ -247,34 +298,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // No hay token ni datos
     }
     
-    if (savedFavorites) {
-      setFavorites(JSON.parse(savedFavorites));
-    }
-
-    // Si hay usuario autenticado, cargar favoritos desde la API
-    if (token && userData) {
-      (async () => {
-        try {
-          const result = await authAPI.getFavorites();
-          
-          if (result.success && result.data) {
-            // Convertir IDs a strings y combinar con favoritos locales
-            const apiFavorites = result.data.map((f: any) => f.service_id.toString());
-            const localFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-            
-            // Crear union de ambos sets (sin duplicados)
-            const mergedFavorites = Array.from(new Set([...apiFavorites, ...localFavorites]));
-            
-            setFavorites(mergedFavorites);
-            localStorage.setItem('favorites', JSON.stringify(mergedFavorites));
-            logger.info('Favorites loaded from API:', mergedFavorites.length);
-          }
-        } catch (error) {
-          logger.error('Error loading favorites from API:', error);
-          // En caso de error, mantener favoritos locales
-        }
-      })();
-    }
+    // La carga de favoritos ahora se hace en un useEffect separado que reacciona al cambio de usuario
     
     if (attempts) {
       setLoginAttempts(parseInt(attempts));
@@ -1034,49 +1058,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const addToFavorites = async (serviceId: string) => {
     if (!user) {
-      logger.warn('User not authenticated');
+      logger.warn('Usuario no autenticado - no se puede agregar a favoritos');
       return;
+    }
+
+    // Actualizar UI inmediatamente (optimistic update)
+    if (!favorites.includes(serviceId)) {
+      const newFavorites = [...favorites, serviceId];
+      setFavorites(newFavorites);
+      localStorage.setItem('favorites', JSON.stringify(newFavorites));
+      logger.debug('Favorito agregado localmente (optimistic):', serviceId);
     }
 
     try {
       const result = await authAPI.addToFavorites(parseInt(serviceId));
       
       if (result.success) {
-        // Actualizar estado local
-        if (!favorites.includes(serviceId)) {
-          const newFavorites = [...favorites, serviceId];
-          setFavorites(newFavorites);
-          localStorage.setItem('favorites', JSON.stringify(newFavorites));
-        }
-        logger.info('Service added to favorites:', serviceId);
+        logger.info('Favorito agregado en servidor:', serviceId);
       } else {
-        logger.error('Error adding to favorites:', result.error);
+        // Si falla en el servidor, revertir el cambio optimista
+        logger.error('Error agregando favorito en servidor:', result.error);
+        const revertedFavorites = favorites.filter(id => id !== serviceId);
+        setFavorites(revertedFavorites);
+        localStorage.setItem('favorites', JSON.stringify(revertedFavorites));
       }
     } catch (error) {
-      logger.error('Exception adding to favorites:', error);
+      // Si falla la petición, revertir el cambio optimista
+      logger.error('Excepción agregando favorito:', error);
+      const revertedFavorites = favorites.filter(id => id !== serviceId);
+      setFavorites(revertedFavorites);
+      localStorage.setItem('favorites', JSON.stringify(revertedFavorites));
     }
   };
 
   const removeFromFavorites = async (serviceId: string) => {
     if (!user) {
-      logger.warn('User not authenticated');
+      logger.warn('Usuario no autenticado - no se puede eliminar de favoritos');
       return;
     }
+
+    // Actualizar UI inmediatamente (optimistic update)
+    const newFavorites = favorites.filter(id => id !== serviceId);
+    const previousFavorites = [...favorites]; // Guardar para revertir si falla
+    setFavorites(newFavorites);
+    localStorage.setItem('favorites', JSON.stringify(newFavorites));
+    logger.debug('Favorito eliminado localmente (optimistic):', serviceId);
 
     try {
       const result = await authAPI.removeFromFavorites(parseInt(serviceId));
       
       if (result.success) {
-        // Actualizar estado local
-        const newFavorites = favorites.filter(id => id !== serviceId);
-        setFavorites(newFavorites);
-        localStorage.setItem('favorites', JSON.stringify(newFavorites));
-        logger.info('Service removed from favorites:', serviceId);
+        logger.info('Favorito eliminado del servidor:', serviceId);
       } else {
-        logger.error('Error removing from favorites:', result.error);
+        // Si falla en el servidor, revertir el cambio optimista
+        logger.error('Error eliminando favorito del servidor:', result.error);
+        setFavorites(previousFavorites);
+        localStorage.setItem('favorites', JSON.stringify(previousFavorites));
       }
     } catch (error) {
-      logger.error('Exception removing from favorites:', error);
+      // Si falla la petición, revertir el cambio optimista
+      logger.error('Excepción eliminando favorito:', error);
+      setFavorites(previousFavorites);
+      localStorage.setItem('favorites', JSON.stringify(previousFavorites));
     }
   };
 

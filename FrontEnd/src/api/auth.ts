@@ -68,14 +68,27 @@ export interface ServiceData {
 
 export interface ServiceResponse {
   id: number;
+  user_id?: number;
+  provider?: {
+    id: number;
+    name: string;
+    phone?: string;
+    locality?: string;
+    province?: string;
+  };
   title: string;
   description: string;
   category: string;
   price: number;
+  duration_minutes?: number;
+  booking_window_days?: number;
   availability: any;
   zones: any[];
   status: 'active' | 'inactive';
   image_url: string;
+  average_rating?: number;
+  ratings_count?: number;
+  is_favorite?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -668,6 +681,18 @@ export const authAPI = {
   getServices: async (): Promise<ApiResponse<ServiceResponse[]>> => {
     try {
       const response = await api.get('/api/services');
+      
+      // Log para verificar que llegan los campos de rating
+      console.log('🔍 [getServices] Total servicios:', response.data.data.services.length);
+      console.log('🔍 [getServices] Servicios con ratings:', 
+        response.data.data.services.map((s: any) => ({
+          id: s.id,
+          title: s.title,
+          average_rating: s.average_rating,
+          ratings_count: s.ratings_count,
+          shouldShowBadge: (s.average_rating >= 4 && s.ratings_count >= 3)
+        }))
+      );
       
       return {
         success: true,
@@ -1282,11 +1307,46 @@ export const authAPI = {
       
       logger.info('Reviews obtenidas:', response.data);
       
+      // Si el backend no envía user_review, intentar encontrarla en el array de reviews
+      // comparando con el user_id del token almacenado
+      let reviewsData = response.data;
+      
+      if (!reviewsData.user_review && reviewsData.reviews && Array.isArray(reviewsData.reviews)) {
+        try {
+          const token = localStorage.getItem('token');
+          if (token) {
+            // Decodificar el token para obtener el user_id
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            const decoded = JSON.parse(jsonPayload);
+            const userId = decoded.user_id || decoded.id || decoded.sub;
+            
+            if (userId) {
+              // Buscar la review del usuario en el array
+              const userReview = reviewsData.reviews.find((review: any) => review.user_id === userId);
+              if (userReview) {
+                reviewsData = {
+                  ...reviewsData,
+                  user_review: userReview
+                };
+                console.log('✅ [getServiceReviews] Review del usuario encontrada y agregada:', userReview);
+              }
+            }
+          }
+        } catch (decodeError) {
+          console.warn('⚠️ [getServiceReviews] Error al decodificar token para buscar user_review:', decodeError);
+          // Continuar sin user_review si hay error
+        }
+      }
+      
       // La API retorna directamente el objeto con reviews, average_rating, total_reviews, rating_distribution
       return {
         success: true,
-        data: response.data, // Este objeto ya contiene reviews, average_rating, etc.
-        message: `${response.data.total_reviews || 0} reviews`,
+        data: reviewsData,
+        message: `${reviewsData.total_reviews || 0} reviews`,
       };
     } catch (error: any) {
       logger.error('Error obteniendo reviews:', error);

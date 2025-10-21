@@ -10,8 +10,8 @@ interface ServiceLeaderBadgeProps {
 
 /**
  * Insignia "Services Líder" que se muestra cuando un servicio tiene:
- * - Promedio de rating ≥ 4
- * - Al menos 5 calificaciones
+ * - Promedio de rating ≥ 4 estrellas
+ * - Al menos 3 calificaciones
  */
 const ServiceLeaderBadge: React.FC<ServiceLeaderBadgeProps> = ({ 
   averageRating, 
@@ -20,11 +20,24 @@ const ServiceLeaderBadge: React.FC<ServiceLeaderBadgeProps> = ({
   size = 'md'
 }) => {
   // Validar si cumple con los requisitos para ser "Services Líder"
+  // Criterio: Promedio >= 4 estrellas Y al menos 3 calificaciones
   const isServiceLeader = 
     averageRating !== undefined && 
-    averageRating >= 4 && 
-    ratingsCount !== undefined && 
-    ratingsCount >= 5;
+    averageRating >= 4 &&
+    ratingsCount !== undefined &&
+    ratingsCount >= 3;
+
+  // Debug: log cuando recibe valores
+  React.useEffect(() => {
+    if (averageRating !== undefined) {
+      console.log('🏆 [ServiceLeaderBadge]', {
+        averageRating,
+        ratingsCount,
+        isServiceLeader,
+        shouldShow: isServiceLeader
+      });
+    }
+  }, [averageRating, ratingsCount, isServiceLeader]);
 
   // No mostrar nada si no cumple los requisitos
   if (!isServiceLeader) {
@@ -52,7 +65,7 @@ const ServiceLeaderBadge: React.FC<ServiceLeaderBadgeProps> = ({
   return (
     <div 
       className={`inline-flex items-center gap-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 font-semibold rounded-full ${classes.container} shadow-sm`}
-      title="Servicio con excelente reputación (promedio ≥ 4 y al menos 5 calificaciones)"
+      title="Servicio con excelente reputación (promedio ≥ 4 estrellas y al menos 3 calificaciones)"
     >
       <Award className={`${classes.icon} fill-current`} />
       {showLabel && <span>Services Líder</span>}

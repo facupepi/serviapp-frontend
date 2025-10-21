@@ -61,7 +61,22 @@ export default function FavoritesPage() {
 
     loadFavoriteServices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]); // Solo depende de isAuthenticated, no de favorites
+  }, [isAuthenticated, favorites.length]); // Recargar cuando cambia la cantidad de favoritos
+
+  // Actualizar la lista de servicios favoritos cuando cambian los favoritos
+  useEffect(() => {
+    if (favoriteServices.length > 0) {
+      // Filtrar servicios que ya no están en favoritos
+      const updatedServices = favoriteServices.filter(service => 
+        favorites.includes(service.id.toString())
+      );
+      
+      if (updatedServices.length !== favoriteServices.length) {
+        setFavoriteServices(updatedServices);
+        console.log('🔍 [FavoritesPage] Lista de favoritos actualizada:', updatedServices.length);
+      }
+    }
+  }, [favorites, favoriteServices]);
 
   // No renderizar nada si no está autenticado (mientras redirige)
   if (!isAuthenticated) {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, X, Heart, Clock, MessageSquare, Home, Briefcase, Users, ChevronDown, Settings, LogOut } from 'lucide-react';
+import { Menu, X, Heart, Clock, MessageSquare, Home, Briefcase, Users, ChevronDown, Settings, LogOut, Info } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -85,6 +85,7 @@ export default function Header() {
                     : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
                 }`}
               >
+                <Info className="w-4 h-4 inline mr-2" />
                 Nosotros
               </Link>
             </nav>

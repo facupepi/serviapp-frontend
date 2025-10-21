@@ -18,6 +18,16 @@ interface ServiceCardProps {
 const ServiceCard: React.FC<ServiceCardProps> = ({ service, isFavorite, onToggleFavorite, isAuthenticated }) => {
   const navigate = useNavigate();
 
+  // Debug: log rating data
+  React.useEffect(() => {
+    console.log('📋 [ServiceCard] Servicio:', {
+      id: service.id,
+      title: service.title,
+      average_rating: service.average_rating,
+      ratings_count: service.ratings_count
+    });
+  }, [service]);
+
   const handleCardClick = () => {
     navigate(`/service/${service.id}`);
   };
