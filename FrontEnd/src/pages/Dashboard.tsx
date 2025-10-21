@@ -217,12 +217,43 @@ export default function Dashboard() {
     }
   ];
 
-  const getStatusClass = (status: string) =>
-    status === 'pending'
-      ? 'bg-yellow-100 text-yellow-800'
-      : status === 'accepted'
-      ? 'bg-green-100 text-green-800'
-      : 'bg-red-100 text-red-800';
+  const getStatusClass = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'accepted':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      case 'cancelled':
+        return 'bg-orange-100 text-orange-800';
+      case 'completed':
+        return 'bg-blue-100 text-blue-800';
+      case 'expired':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'Pendiente';
+      case 'accepted':
+        return 'Aceptada';
+      case 'rejected':
+        return 'Rechazada';
+      case 'cancelled':
+        return 'Cancelada';
+      case 'completed':
+        return 'Completada';
+      case 'expired':
+        return 'Caducada';
+      default:
+        return 'Desconocido';
+    }
+  };
 
   const formatDateForDashboard = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -352,7 +383,7 @@ export default function Dashboard() {
                       <p className="text-sm text-gray-600">{formatDateForDashboard(request.requestedDate)}{request.requestedTime ? ` · ${request.requestedTime}` : ''}</p>
                     </div>
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(request.status)}`}>
-                      {request.status === 'pending' ? 'Pendiente' : request.status === 'accepted' ? 'Aceptada' : 'Rechazada'}
+                      {getStatusText(request.status)}
                     </span>
                   </div>
                 ))}
@@ -380,7 +411,7 @@ export default function Dashboard() {
                       <p className="text-sm text-gray-600">{formatDateForDashboard(request.requestedDate)}{request.requestedTime ? ` · ${request.requestedTime}` : ''}</p>
                     </div>
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(request.status)}`}>
-                      {request.status === 'pending' ? 'Pendiente' : request.status === 'accepted' ? 'Aceptada' : 'Rechazada'}
+                      {getStatusText(request.status)}
                     </span>
                   </div>
                 ))}

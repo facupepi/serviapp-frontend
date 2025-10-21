@@ -1,12 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, MapPin, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { Service } from '../types/api';
+import logger from '../utils/logger';
+import StarRating from '../components/StarRating';
 // Image is required on services; use service-provided URL directly
 
 export default function FavoritesPage() {
   const navigate = useNavigate();
-  const { services, favorites, removeFromFavorites, isAuthenticated } = useAuth();
+  const { getServices, favorites, removeFromFavorites, isAuthenticated } = useAuth();
+  const [favoriteServices, setFavoriteServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Redirigir si no está autenticado
   useEffect(() => {
@@ -14,6 +19,49 @@ export default function FavoritesPage() {
       navigate('/login');
     }
   }, [isAuthenticated, navigate]);
+
+  // Cargar servicios favoritos (solo al montar el componente)
+  useEffect(() => {
+    const loadFavoriteServices = async () => {
+      console.log('🔍 [FavoritesPage] Cargando favoritos iniciales:', favorites);
+      console.log('🔍 [FavoritesPage] isAuthenticated:', isAuthenticated);
+      
+      if (!isAuthenticated) {
+        setLoading(false);
+        return;
+      }
+
+      // Si no hay favoritos, no mostrar loading
+      if (favorites.length === 0) {
+        setFavoriteServices([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const result = await getServices();
+        console.log('🔍 [FavoritesPage] Servicios obtenidos:', result.data?.length);
+        
+        if (result.success && result.data) {
+          // Filtrar solo los servicios que están en favoritos
+          const favServices = result.data.filter((service: Service) => 
+            favorites.includes(service.id.toString())
+          );
+          console.log('🔍 [FavoritesPage] Servicios favoritos filtrados:', favServices.length);
+          setFavoriteServices(favServices);
+          logger.info('Servicios favoritos cargados:', favServices.length);
+        }
+      } catch (error) {
+        logger.error('Error cargando servicios favoritos:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFavoriteServices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]); // Solo depende de isAuthenticated, no de favorites
 
   // No renderizar nada si no está autenticado (mientras redirige)
   if (!isAuthenticated) {
@@ -27,17 +75,31 @@ export default function FavoritesPage() {
     );
   }
 
-  // Obtener servicios favoritos
-  const favoriteServices = services.filter(service => favorites.includes(service.id));
-
-  const handleServiceClick = (serviceId: string) => {
+  const handleServiceClick = (serviceId: string | number) => {
     navigate(`/service/${serviceId}`);
   };
 
   const handleRemoveFavorite = (serviceId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // Actualizar estado local inmediatamente (optimistic update)
+    setFavoriteServices(prev => prev.filter(service => service.id.toString() !== serviceId));
+    
+    // Luego actualizar en el contexto/API
     removeFromFavorites(serviceId);
   };
+
+  // Mostrar loading mientras carga
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando favoritos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -80,13 +142,12 @@ export default function FavoritesPage() {
               >
                 <div className="relative">
                   <img
-                    src={service.image_url || service.image}
+                    src={service.image_url}
                     alt={service.title}
                     className="w-full h-48 object-cover"
-                     onError={() => { /* image required on backend */ }}
                   />
                   <button
-                    onClick={(e) => handleRemoveFavorite(service.id, e)}
+                    onClick={(e) => handleRemoveFavorite(service.id.toString(), e)}
                     className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                     title="Eliminar de favoritos"
                   >
@@ -101,6 +162,18 @@ export default function FavoritesPage() {
                   
                   <p className="text-gray-600 text-sm mb-2">{service.category}</p>
                   
+                  {/* Mostrar rating si existe */}
+                  {service.average_rating !== undefined && service.average_rating > 0 ? (
+                    <div className="mb-2">
+                      <StarRating 
+                        rating={service.average_rating} 
+                        size="sm"
+                        showCount={true}
+                        count={service.ratings_count || 0}
+                      />
+                    </div>
+                  ) : null}
+                  
                   <div className="flex items-center text-gray-500 text-sm mb-3">
                     <MapPin className="h-4 w-4 mr-1" />
                     <span>{service.zones[0]?.province}, {service.zones[0]?.locality}</span>
@@ -108,7 +181,7 @@ export default function FavoritesPage() {
                   
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">
-                      Por: <span className="font-medium">{service.providerName}</span>
+                      Por: <span className="font-medium">{service.provider?.name || 'Proveedor'}</span>
                     </span>
                     <button
                       onClick={() => handleServiceClick(service.id)}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, X, Bell, Heart, Clock, MessageSquare, Home, Briefcase, Users, ChevronDown, Settings, LogOut } from 'lucide-react';
+import { Menu, X, Heart, Clock, MessageSquare, Home, Briefcase, Users, ChevronDown, Settings, LogOut } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -93,12 +93,6 @@ export default function Header() {
             <div className="flex items-center space-x-3">
               {isAuthenticated ? (
                 <>
-                  {/* Notifications */}
-                  <button className="relative p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-300">
-                    <Bell className="w-5 h-5" />
-                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-                  </button>
-
                   {/* Favorites */}
                   <Link to="/favorites" className="p-2.5 text-gray-500 hover:text-pink-500 hover:bg-pink-50 rounded-lg transition-all duration-300 hidden sm:flex">
                     <Heart className="w-5 h-5" />

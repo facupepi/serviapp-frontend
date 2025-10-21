@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle, XCircle, Calendar, MessageSquare, ArrowLeft, Grid3X3, List } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 
 interface RequestCardProps {
   request: any;
@@ -11,8 +12,10 @@ interface RequestCardProps {
 function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) {
   const [loading, setLoading] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
-  const { respondToRequest } = useAuth();
+  const { respondToRequest, completeAppointment } = useAuth();
+  const { addNotification } = useNotifications();
 
   // Parse a YYYY-MM-DD string into a local Date object (avoids UTC parsing)
   const parseLocalDate = (dateStr: string) => {
@@ -23,6 +26,9 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
 
   const requestDate = request.requestedDate ? parseLocalDate(request.requestedDate) : null;
   const canRespond = request.status === 'pending';
+  
+  // Puede completar si está aceptado y la fecha ya pasó
+  const canComplete = request.status === 'accepted' && requestDate && requestDate < new Date();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -32,6 +38,12 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
         return 'bg-green-50 border-green-200 text-green-800';
       case 'rejected':
         return 'bg-red-50 border-red-200 text-red-800';
+      case 'cancelled':
+        return 'bg-orange-50 border-orange-200 text-orange-800';
+      case 'completed':
+        return 'bg-blue-50 border-blue-200 text-blue-800';
+      case 'expired':
+        return 'bg-gray-50 border-gray-200 text-gray-800';
       default:
         return 'bg-gray-50 border-gray-200 text-gray-800';
     }
@@ -44,7 +56,11 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
       case 'accepted':
         return <CheckCircle className="h-3 w-3" />;
       case 'rejected':
+      case 'cancelled':
+      case 'expired':
         return <XCircle className="h-3 w-3" />;
+      case 'completed':
+        return <CheckCircle className="h-3 w-3" />;
       default:
         return <Clock className="h-3 w-3" />;
     }
@@ -58,6 +74,12 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
         return 'Aceptada';
       case 'rejected':
         return 'Rechazada';
+      case 'cancelled':
+        return 'Cancelada';
+      case 'completed':
+        return 'Completada';
+      case 'expired':
+        return 'Caducada';
       default:
         return 'Desconocido';
     }
@@ -86,6 +108,33 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
       setRejectionReason('');
     } catch (error) {
       console.error('Error rejecting request:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    setShowCompleteModal(false);
+    setLoading(true);
+    try {
+      const result = await completeAppointment(request.id);
+      if (result.success) {
+        addNotification({ 
+          type: 'success', 
+          message: result.message || 'Servicio marcado como completado exitosamente' 
+        });
+      } else {
+        addNotification({ 
+          type: 'error', 
+          message: result.error || 'Error al completar el servicio' 
+        });
+      }
+    } catch (error) {
+      console.error('Error completing request:', error);
+      addNotification({ 
+        type: 'error', 
+        message: 'Error inesperado al completar el servicio' 
+      });
     } finally {
       setLoading(false);
     }
@@ -141,6 +190,21 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
                     title="Rechazar"
                   >
                     ✕
+                  </button>
+                </div>
+              )}
+              
+              {/* Botón Completar para servicios aceptados cuya fecha ya pasó */}
+              {canComplete && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => setShowCompleteModal(true)}
+                    disabled={loading}
+                    className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 text-sm"
+                    title="Marcar como completado"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    <span>{loading ? 'Procesando...' : 'Completar'}</span>
                   </button>
                 </div>
               )}
@@ -217,6 +281,19 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
                     </button>
                   </div>
                 )}
+                
+                {/* Botón Completar para servicios aceptados cuya fecha ya pasó */}
+                {canComplete && (
+                  <button
+                    onClick={() => setShowCompleteModal(true)}
+                    disabled={loading}
+                    className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 text-sm"
+                    title="Marcar como completado"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    <span>{loading ? 'Procesando...' : 'Completar'}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -252,6 +329,38 @@ function ProviderRequestCard({ request, kanbanView = false }: RequestCardProps) 
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
               >
                 {loading ? 'Procesando...' : 'Rechazar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de completar servicio */}
+      {showCompleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center justify-center mb-4">
+              <CheckCircle className="h-12 w-12 text-blue-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2 text-center">Completar servicio</h3>
+            <p className="text-gray-600 mb-6 text-center">
+              ¿Confirmas que el servicio <span className="font-semibold">{request.serviceName}</span> ha sido completado exitosamente?
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowCompleteModal(false)}
+                disabled={loading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleComplete}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center space-x-2"
+              >
+                <CheckCircle className="h-4 w-4" />
+                <span>{loading ? 'Procesando...' : 'Completar'}</span>
               </button>
             </div>
           </div>

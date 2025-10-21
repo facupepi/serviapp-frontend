@@ -28,14 +28,14 @@ export default function AboutUs() {
     {
       name: 'Facundo Pepino',
       role: 'Software Engineer',
-      image: 'https://media.licdn.com/dms/image/v2/D4D03AQE2mYG1ghmPTw/profile-displayphoto-scale_200_200/B4DZksojv8JAAY-/0/1757390455710?e=1760572800&v=beta&t=Tsdn3j53393HvylhzkUKTIFZWQ5TlcAWnH5IheEZZkI',
+      image: 'https://media.licdn.com/dms/image/v2/D4D03AQE2mYG1ghmPTw/profile-displayphoto-scale_200_200/B4DZksojv8JAAY-/0/1757390455710?e=1762387200&v=beta&t=HOOrvlhTZK3ktktvU_V9e6R7d33L3-fAfa8e1S6rmIw',
       description: 'Estudiante avanzado de Ingeniería en Sistemas de Información, con una visión enfocada en crear soluciones tecnológicas que generen impacto real en las empresas. Comprendo las necesidades del negocio y las traduzco en soluciones técnicas simples.',
       linkedin: 'https://www.linkedin.com/in/facundo-pepino/'
     },
     {
       name: 'Mauricio Truchet',
       role: 'Software Engineer',
-      image: 'https://media.licdn.com/dms/image/v2/D4D03AQEplRPeIPXz9Q/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1726600480158?e=1759968000&v=beta&t=LGW8IPfOPxv_9ZZIuwXwjOjtZO2c65I0Hhes7AOX5d0',
+      image: 'https://media.licdn.com/dms/image/v2/D4D03AQEplRPeIPXz9Q/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1726600480158?e=1762387200&v=beta&t=9me8gihPl6sTd6hS5yNpY9yb2ZjkwHCJuc7bOUeC7Eg',
       description: 'Especializado en análisis de requerimientos, diseño, implementación, testing, monitoreo y post producción. Desarrollo Back-End en aplicaciones REST, arquitecturas de microservicios, y Go.',
       linkedin: 'https://www.linkedin.com/in/mauricio-truchet-385a86198/'
     },

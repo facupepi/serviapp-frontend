@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background with rounded square -->
+  <rect width="128" height="128" rx="24" fill="url(#bgGrad)"/>
+  
+  <!-- Letter S styled as a service symbol -->
+  <path d="M 64 28 
+           C 76 28, 86 32, 90 42
+           L 78 48
+           C 76 42, 70 38, 64 38
+           C 56 38, 50 42, 50 48
+           C 50 54, 54 57, 64 60
+           C 78 64, 88 70, 88 82
+           C 88 94, 78 100, 64 100
+           C 50 100, 40 96, 36 84
+           L 48 78
+           C 50 86, 56 90, 64 90
+           C 72 90, 78 86, 78 82
+           C 78 76, 74 73, 64 70
+           C 50 66, 40 60, 40 48
+           C 40 36, 50 28, 64 28 Z" 
+        fill="white"/>
+  
+  <!-- Small service badge/star accent -->
+  <circle cx="96" cy="32" r="10" fill="#fbbf24"/>
+  <path d="M 96 28 L 97 31 L 100 31 L 97.5 33 L 98.5 36 L 96 34 L 93.5 36 L 94.5 33 L 92 31 L 95 31 Z" fill="white"/>
+</svg>

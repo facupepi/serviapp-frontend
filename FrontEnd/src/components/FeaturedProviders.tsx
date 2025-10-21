@@ -4,6 +4,8 @@ import logger from '../utils/logger';
 import { MapPin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Service } from '../types/api';
+import StarRating from './StarRating';
+import ServiceLeaderBadge from './ServiceLeaderBadge';
 
 export default function FeaturedProviders() {
   const navigate = useNavigate();
@@ -128,7 +130,33 @@ export default function FeaturedProviders() {
 
                 {/* Service Info */}
                 <div className="p-6">
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-1">{service.title}</h3>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-semibold text-gray-900 line-clamp-1 flex-1">{service.title}</h3>
+                  </div>
+                  
+                  {/* Services Líder Badge */}
+                  <div className="mb-2">
+                    <ServiceLeaderBadge 
+                      averageRating={service.average_rating}
+                      ratingsCount={service.ratings_count}
+                      showLabel={true}
+                      size="sm"
+                    />
+                  </div>
+                  
+                  {/* Rating */}
+                  {service.average_rating !== undefined && service.average_rating > 0 && (
+                    <div className="mb-2">
+                      <StarRating
+                        rating={service.average_rating}
+                        readonly
+                        size="sm"
+                        showCount
+                        count={service.ratings_count || 0}
+                      />
+                    </div>
+                  )}
+                  
                   <p className="text-gray-600 text-sm mb-3 line-clamp-2">{service.description}</p>
 
                   {/* Locations: una debajo de otra con icono */}
@@ -159,6 +187,20 @@ export default function FeaturedProviders() {
                       Ver detalles
                     </button>
                   </div>
+
+                  {/* Provider info */}
+                  {service.provider && (
+                    <div className="border-t pt-3 mt-3">
+                      <span className="text-sm text-gray-600">
+                        <span className="font-medium">{service.provider.name}</span>
+                        {service.provider.locality && service.provider.province && (
+                          <span className="text-xs text-gray-500 block mt-1">
+                            {service.provider.locality}, {service.provider.province}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

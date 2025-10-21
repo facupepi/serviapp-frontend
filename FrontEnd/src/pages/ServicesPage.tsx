@@ -2,9 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import logger from '../utils/logger';
 // Image is required on services; use service-provided URL directly
-import { Search, Filter, MapPin, Shield, Heart, X } from 'lucide-react';
+import { Search, Filter, MapPin, Heart, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import FiltersSidebar from '../components/FiltersSidebar';
+import StarRating from '../components/StarRating';
+import ServiceLeaderBadge from '../components/ServiceLeaderBadge';
 
 interface ServiceCardProps {
   service: any;
@@ -24,13 +26,11 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isFavorite, onToggle
     e.stopPropagation();
     e.preventDefault(); // Prevenir comportamiento por defecto
     if (isAuthenticated) {
-      onToggleFavorite(service.id);
+      onToggleFavorite(service.id.toString());
     } else {
       navigate('/login');
     }
   };
-
-  const isServicesLider = service.rating >= 4.5 && service.reviewCount >= 5;
 
   return (
     <div 
@@ -60,12 +60,15 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isFavorite, onToggle
         >
           <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
         </button>
-        {isServicesLider && (
-          <div className="absolute top-12 left-3 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center">
-            <Shield className="h-3 w-3 mr-1" />
-            Services Líder
-          </div>
-        )}
+        {/* Services Líder Badge */}
+        <div className="absolute top-12 left-3">
+          <ServiceLeaderBadge 
+            averageRating={service.average_rating}
+            ratingsCount={service.ratings_count}
+            showLabel={true}
+            size="sm"
+          />
+        </div>
       </div>
       
       <div className="p-4">
@@ -74,6 +77,19 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isFavorite, onToggle
             {service.title}
           </h3>
         </div>
+        
+        {/* Rating */}
+        {service.average_rating !== undefined && service.average_rating > 0 && (
+          <div className="mb-2">
+            <StarRating
+              rating={service.average_rating}
+              readonly
+              size="sm"
+              showCount
+              count={service.ratings_count || 0}
+            />
+          </div>
+        )}
         
         <p className="text-gray-600 text-sm mb-2 line-clamp-2">{service.description}</p>
 
@@ -109,11 +125,20 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isFavorite, onToggle
             Ver detalles
           </button>
         </div>
-        <div>
-          <span className="text-sm text-gray-600">
-            <span className="font-medium">{service.providerName}</span>
-          </span>
-        </div>
+        
+        {/* Provider info */}
+        {service.provider && (
+          <div className="border-t pt-2">
+            <span className="text-sm text-gray-600">
+              <span className="font-medium">{service.provider.name}</span>
+              {service.provider.locality && service.provider.province && (
+                <span className="text-xs text-gray-500 block">
+                  {service.provider.locality}, {service.provider.province}
+                </span>
+              )}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -139,6 +164,12 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(true);
   
   const servicesPerPage = 9;
+
+  // Debug: ver favoritos
+  useEffect(() => {
+    console.log('🔍 [ServicesPage] Favoritos actuales:', favorites);
+    console.log('🔍 [ServicesPage] isAuthenticated:', isAuthenticated);
+  }, [favorites, isAuthenticated]);
 
   useEffect(() => {
     const loadServices = async () => {
@@ -368,7 +399,7 @@ export default function ServicesPage() {
                     <ServiceCard
                       key={service.id}
                       service={service}
-                      isFavorite={favorites.includes(service.id)}
+                      isFavorite={favorites.includes(service.id.toString())}
                       onToggleFavorite={handleToggleFavorite}
                       isAuthenticated={isAuthenticated}
                     />

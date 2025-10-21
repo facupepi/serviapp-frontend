@@ -67,9 +67,12 @@ interface ServiceRequest {
   clientName: string;
   providerId: string;
   providerName: string;
+  providerPhone?: string;
+  providerLocality?: string;
+  providerProvince?: string;
   requestedDate: string;
   requestedTime: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  status: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'completed' | 'expired';
   rejectionReason?: string;
   createdAt: string;
 }
@@ -90,6 +93,7 @@ interface AuthContextType {
   requestService: (serviceId: string, date: string, time: string) => Promise<{ success: boolean; error?: string }>;
   createAppointment: (appointment: { service_id: number; date: string; time_slot: string; notes?: string }) => Promise<{ success: boolean; error?: string; data?: any }>;
   respondToRequest: (requestId: string, action: 'accept' | 'reject', rejectionReason?: string) => Promise<{ success: boolean; error?: string }>;
+  completeAppointment: (appointmentId: string) => Promise<{ success: boolean; error?: string; message?: string }>;
   addToFavorites: (serviceId: string) => void;
   removeFromFavorites: (serviceId: string) => void;
   submitReview: (serviceRequestId: string, rating: number, comment: string) => Promise<{ success: boolean; error?: string }>;
@@ -108,7 +112,8 @@ interface AuthContextType {
   deleteService: (serviceId: string) => Promise<{ success: boolean; error?: string }>;
   getServiceCalendar: (serviceId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
   getServiceAvailability: (serviceId: string, date: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-  updateUserProfile: (profileData: { name?: string; email?: string; locality?: string; province?: string; phone?: string; }) => Promise<{ success: boolean; error?: string }>;
+  getUserProfile: () => Promise<{ success: boolean; data?: any; error?: string }>;
+  updateUserProfile: (profileData: { name?: string; email?: string; locality?: string; province?: string; phone?: string; }) => Promise<{ success: boolean; error?: string; message?: string }>;
   providerRequestsLoaded: boolean;
   isLoadingAppointments: boolean;
   isAuthenticated: boolean;
@@ -244,6 +249,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     if (savedFavorites) {
       setFavorites(JSON.parse(savedFavorites));
+    }
+
+    // Si hay usuario autenticado, cargar favoritos desde la API
+    if (token && userData) {
+      (async () => {
+        try {
+          const result = await authAPI.getFavorites();
+          
+          if (result.success && result.data) {
+            // Convertir IDs a strings y combinar con favoritos locales
+            const apiFavorites = result.data.map((f: any) => f.service_id.toString());
+            const localFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+            
+            // Crear union de ambos sets (sin duplicados)
+            const mergedFavorites = Array.from(new Set([...apiFavorites, ...localFavorites]));
+            
+            setFavorites(mergedFavorites);
+            localStorage.setItem('favorites', JSON.stringify(mergedFavorites));
+            logger.info('Favorites loaded from API:', mergedFavorites.length);
+          }
+        } catch (error) {
+          logger.error('Error loading favorites from API:', error);
+          // En caso de error, mantener favoritos locales
+        }
+      })();
     }
     
     if (attempts) {
@@ -418,7 +448,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { success: false, error: 'Demasiados intentos fallidos. Cuenta bloqueada por 10 minutos.' };
         }
         
-        return { success: false, error: response.error || 'Credenciales incorrectas' };
+        const formattedError = response.error ? formatLoginError(response.error) : 'Credenciales incorrectas';
+        return { success: false, error: formattedError };
       }
     } catch (error: any) {
       logger.error('❌ Error completo en login:', error);
@@ -451,6 +482,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Error genérico
       return { success: false, error: error?.message || 'Error inesperado al iniciar sesión.' };
     }
+  };
+
+  // Función para formatear mensajes de error del backend
+  const formatRegisterError = (error: string): string => {
+    const errorMessages: Record<string, string> = {
+      'Email already exists': 'Este correo electrónico ya está registrado. Por favor, inicia sesión o usa otro correo.',
+      'email already exists': 'Este correo electrónico ya está registrado. Por favor, inicia sesión o usa otro correo.',
+      'User already exists': 'Este usuario ya existe. Por favor, inicia sesión o usa otro correo.',
+      'Invalid email format': 'El formato del correo electrónico no es válido.',
+      'Password too short': 'La contraseña es demasiado corta.',
+      'Phone number already exists': 'Este número de teléfono ya está registrado.',
+    };
+
+    // Buscar coincidencia exacta
+    if (errorMessages[error]) {
+      return errorMessages[error];
+    }
+
+    // Buscar coincidencia parcial (case insensitive)
+    const lowerError = error.toLowerCase();
+    for (const [key, value] of Object.entries(errorMessages)) {
+      if (lowerError.includes(key.toLowerCase())) {
+        return value;
+      }
+    }
+
+    // Si no hay coincidencia, retornar el mensaje original
+    return error;
+  };
+
+  // Función para formatear mensajes de error del login
+  const formatLoginError = (error: string): string => {
+    const errorMessages: Record<string, string> = {
+      'Invalid credentials': 'Correo electrónico o contraseña incorrectos.',
+      'invalid credentials': 'Correo electrónico o contraseña incorrectos.',
+      'User not found': 'Usuario no encontrado. Verifica tu correo electrónico.',
+      'user not found': 'Usuario no encontrado. Verifica tu correo electrónico.',
+      'Incorrect password': 'Contraseña incorrecta. Por favor, intenta nuevamente.',
+      'incorrect password': 'Contraseña incorrecta. Por favor, intenta nuevamente.',
+      'Account locked': 'Tu cuenta ha sido bloqueada. Contacta a soporte.',
+      'account locked': 'Tu cuenta ha sido bloqueada. Contacta a soporte.',
+    };
+
+    // Buscar coincidencia exacta
+    if (errorMessages[error]) {
+      return errorMessages[error];
+    }
+
+    // Buscar coincidencia parcial (case insensitive)
+    const lowerError = error.toLowerCase();
+    for (const [key, value] of Object.entries(errorMessages)) {
+      if (lowerError.includes(key.toLowerCase())) {
+        return value;
+      }
+    }
+
+    // Si no hay coincidencia, retornar el mensaje original
+    return error;
   };
 
   const register = async (userData: RegisterData): Promise<{ success: boolean; error?: string; message?: string; requiresLogin?: boolean }> => {
@@ -586,7 +675,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
         }
       } else {
-        return { success: false, error: response.error || 'Error al registrarse' };
+        const formattedError = response.error ? formatRegisterError(response.error) : 'Error al registrarse';
+        return { success: false, error: formattedError };
       }
     } catch (error: any) {
       logger.error('Error en registro:', error);
@@ -794,14 +884,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateUserProfile = async (profileData: { name?: string; email?: string; locality?: string; province?: string; phone?: string; }): Promise<{ success: boolean; error?: string }> => {
+  // Obtener perfil del usuario
+  const getUserProfile = async (): Promise<{ success: boolean; data?: any; error?: string }> => {
     try {
-      const resp = await authAPI.updateProfile(profileData);
+      if (!user) return { success: false, error: 'No hay usuario autenticado' };
+      
+      const resp = await authAPI.getUserProfile();
+      if (!resp.success) return { success: false, error: resp.error };
+
+      // Actualizar estado local del usuario con los datos obtenidos
+      if (resp.data) {
+        const profileData = resp.data;
+        const updatedUser: User = {
+          id: profileData.id?.toString() || user.id,
+          name: profileData.name || user.name,
+          email: profileData.email || user.email,
+          phone: profileData.phone || user.phone || '',
+          province: profileData.province || user.province || '',
+          locality: profileData.locality || user.locality || '',
+          avatar: user.avatar,
+          rating: user.rating,
+          reviewCount: user.reviewCount,
+          completedJobs: user.completedJobs,
+          experience: user.experience,
+          description: user.description,
+          services: user.services,
+          certifications: user.certifications,
+          verified: user.verified,
+          createdAt: profileData.created_at || user.createdAt
+        };
+        setUser(updatedUser);
+        userStorage.setUser(updatedUser);
+      }
+
+      return { success: true, data: resp.data };
+    } catch (error) {
+      logger.error('Error en getUserProfile:', error);
+      return { success: false, error: 'Error obteniendo perfil' };
+    }
+  };
+
+  const updateUserProfile = async (profileData: { name?: string; email?: string; locality?: string; province?: string; phone?: string; }): Promise<{ success: boolean; error?: string; message?: string }> => {
+    try {
+      // Usar el nuevo endpoint
+      const resp = await authAPI.updateUserProfile(profileData);
       if (!resp.success) return { success: false, error: resp.error };
 
       // Actualizar estado local del usuario (si hay datos)
-      if (resp.data && resp.data.user) {
-        const updated = resp.data.user;
+      if (resp.data) {
+        const updated = resp.data;
         const newUser: User = {
           id: updated.id?.toString() || user?.id || 'unknown',
           name: updated.name || user?.name || '',
@@ -824,7 +955,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userStorage.setUser(newUser);
       }
 
-      return { success: true };
+      return { success: true, message: resp.message };
     } catch (error) {
       logger.error('Error en updateUserProfile:', error);
       return { success: false, error: 'Error actualizando perfil' };
@@ -865,18 +996,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addToFavorites = (serviceId: string) => {
-    if (!favorites.includes(serviceId)) {
-      const newFavorites = [...favorites, serviceId];
-      setFavorites(newFavorites);
-      localStorage.setItem('favorites', JSON.stringify(newFavorites));
+  const completeAppointment = async (appointmentId: string): Promise<{ success: boolean; error?: string; message?: string }> => {
+    try {
+      logger.info('Completando appointment:', appointmentId);
+      
+      const result = await authAPI.completeAppointment(appointmentId);
+      
+      if (result.success) {
+        // Actualizar estado local en providerRequests
+        setProviderRequests(prev => prev.map(request =>
+          request.id === appointmentId
+            ? { ...request, status: 'completed' }
+            : request
+        ));
+
+        // Actualizar estado local en userRequests
+        setUserRequests(prev => prev.map(request =>
+          request.id === appointmentId
+            ? { ...request, status: 'completed' }
+            : request
+        ));
+
+        logger.info('Appointment completado exitosamente');
+        return { 
+          success: true, 
+          message: result.message || 'Servicio marcado como completado exitosamente' 
+        };
+      } else {
+        logger.error('Error completando appointment:', result.error);
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      logger.error('Exception completando appointment:', error);
+      return { success: false, error: 'Error inesperado al completar el servicio' };
     }
   };
 
-  const removeFromFavorites = (serviceId: string) => {
-    const newFavorites = favorites.filter(id => id !== serviceId);
-    setFavorites(newFavorites);
-    localStorage.setItem('favorites', JSON.stringify(newFavorites));
+  const addToFavorites = async (serviceId: string) => {
+    if (!user) {
+      logger.warn('User not authenticated');
+      return;
+    }
+
+    try {
+      const result = await authAPI.addToFavorites(parseInt(serviceId));
+      
+      if (result.success) {
+        // Actualizar estado local
+        if (!favorites.includes(serviceId)) {
+          const newFavorites = [...favorites, serviceId];
+          setFavorites(newFavorites);
+          localStorage.setItem('favorites', JSON.stringify(newFavorites));
+        }
+        logger.info('Service added to favorites:', serviceId);
+      } else {
+        logger.error('Error adding to favorites:', result.error);
+      }
+    } catch (error) {
+      logger.error('Exception adding to favorites:', error);
+    }
+  };
+
+  const removeFromFavorites = async (serviceId: string) => {
+    if (!user) {
+      logger.warn('User not authenticated');
+      return;
+    }
+
+    try {
+      const result = await authAPI.removeFromFavorites(parseInt(serviceId));
+      
+      if (result.success) {
+        // Actualizar estado local
+        const newFavorites = favorites.filter(id => id !== serviceId);
+        setFavorites(newFavorites);
+        localStorage.setItem('favorites', JSON.stringify(newFavorites));
+        logger.info('Service removed from favorites:', serviceId);
+      } else {
+        logger.error('Error removing from favorites:', result.error);
+      }
+    } catch (error) {
+      logger.error('Exception removing from favorites:', error);
+    }
   };
 
   const submitReview = async (serviceRequestId: string, rating: number, comment: string): Promise<{ success: boolean; error?: string }> => {
@@ -893,10 +1094,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'El comentario debe tener entre 20 y 500 caracteres' };
       }
 
-      // Simulación de guardado de reseña
-  logger.info('Review submitted:', { serviceRequestId, rating, comment });
-      return { success: true };
+      // Buscar el appointment para obtener el service_id
+      const appointment = userRequests.find(req => req.id.toString() === serviceRequestId.toString());
+      
+      if (!appointment || !appointment.serviceId) {
+        return { success: false, error: 'No se encontró información del servicio' };
+      }
+
+      const serviceId = parseInt(appointment.serviceId);
+      
+      console.log('🔍 [submitReview] Appointment encontrado:', appointment);
+      console.log('🔍 [submitReview] Appointment status:', appointment.status);
+      console.log('🔍 [submitReview] Service ID:', serviceId);
+      console.log('🔍 [submitReview] Rating:', rating);
+      console.log('🔍 [submitReview] Comment:', comment);
+      
+      // Validar que el appointment esté completado
+      if (appointment.status !== 'completed' && appointment.status !== 'accepted') {
+        return { 
+          success: false, 
+          error: 'Solo puedes calificar servicios completados o aceptados' 
+        };
+      }
+
+      // Llamar a la API para crear la review
+      const result = await authAPI.createReview(serviceId, rating, comment);
+      
+      console.log('🔍 [submitReview] Resultado de createReview:', result);
+      
+      if (result.success) {
+        logger.info('Review enviada exitosamente:', result.data);
+        return { success: true };
+      } else {
+        return { success: false, error: result.error || 'Error al enviar la reseña' };
+      }
     } catch (error) {
+      logger.error('Error en submitReview:', error);
+      console.error('🔍 [submitReview] Exception:', error);
       return { success: false, error: 'Error del servidor' };
     }
   };
@@ -1229,6 +1463,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Mapear al formato ServiceRequest que usa la UI
       const mapped = appointments.map((a: any) => {
         const svc = a.service || {};
+        const provider = a.provider || svc.provider || {};
         return {
           id: a.id?.toString() || Date.now().toString(),
           serviceId: svc.id?.toString() || '',
@@ -1237,7 +1472,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           clientId: a.client_id?.toString() || user.id,
           clientName: user.name,
           providerId: a.provider_id?.toString() || '',
-          providerName: svc.providerName || svc.provider_name || '',
+          providerName: provider.name || svc.providerName || svc.provider_name || 'Proveedor no disponible',
+          providerPhone: provider.phone || '',
+          providerLocality: provider.locality || '',
+          providerProvince: provider.province || '',
           requestedDate: a.date, // Use date field directly as it's already in YYYY-MM-DD format
           requestedTime: a.time_slot,
           status: a.status,
@@ -1266,6 +1504,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Mapear al formato ServiceRequest que usa la UI
       const mapped = appointments.map((a: any) => {
         const svc = a.service || {};
+        const provider = a.provider || svc.provider || {};
         return {
           id: a.id?.toString() || Date.now().toString(),
           serviceId: svc.id?.toString() || serviceId,
@@ -1274,7 +1513,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           clientId: a.client_id?.toString() || '',
           clientName: a.client_name || a.client?.name || 'Cliente',
           providerId: a.provider_id?.toString() || user.id,
-          providerName: a.provider_name || a.provider?.name || user.name,
+          providerName: provider.name || a.provider_name || a.provider?.name || user.name,
+          providerPhone: provider.phone || '',
+          providerLocality: provider.locality || '',
+          providerProvince: provider.province || '',
           requestedDate: a.date, // Use date field directly as it's already in YYYY-MM-DD format
           requestedTime: a.time_slot,
           status: a.status,
@@ -1324,6 +1566,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (resp.success && Array.isArray(resp.data)) {
             const mapped = resp.data.map((a: any) => {
               const svc = a.service || a.service_data || s;
+              const provider = a.provider || svc.provider || {};
               return {
                 id: a.id?.toString() || Date.now().toString(),
                 serviceId: svc.id?.toString() || (s as any).id?.toString() || '',
@@ -1332,7 +1575,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 clientId: a.client_id?.toString() || a.client?.id?.toString() || '',
                 clientName: a.client_name || a.client?.name || '',
                 providerId: a.provider_id?.toString() || a.provider?.id?.toString() || user.id,
-                providerName: a.provider_name || a.provider?.name || user.name,
+                providerName: provider.name || a.provider_name || a.provider?.name || user.name,
+                providerPhone: provider.phone || '',
+                providerLocality: provider.locality || '',
+                providerProvince: provider.province || '',
                 requestedDate: a.date,
                 requestedTime: a.time_slot,
                 status: a.status,
@@ -1579,6 +1825,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     requestService,
     createAppointment,
     respondToRequest,
+    completeAppointment,
     addToFavorites,
     removeFromFavorites,
     submitReview,
@@ -1595,6 +1842,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   getServiceAvailability,
     getMyAppointments,
     getServiceAppointments,
+    getUserProfile,
   updateUserProfile,
     toggleServiceStatus,
     deactivateService,

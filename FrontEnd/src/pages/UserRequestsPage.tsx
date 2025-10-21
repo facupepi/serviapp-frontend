@@ -1,8 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 // Image is required on services; use service-provided URL directly
 import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle, XCircle, Calendar, Star, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import ReviewForm from '../components/ReviewForm';
+import { useNotifications } from '../contexts/NotificationContext';
+import { authAPI } from '../api/auth';
 
 interface RequestCardProps {
   request: any;
@@ -26,6 +29,10 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onRate, kanbanView =
         return 'bg-green-100 text-green-800 border-green-200';
       case 'rejected':
         return 'bg-red-100 text-red-800 border-red-200';
+      case 'cancelled':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'completed':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'expired':
         return 'bg-gray-100 text-gray-800 border-gray-200';
       default:
@@ -40,8 +47,11 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onRate, kanbanView =
       case 'accepted':
         return <CheckCircle className="h-4 w-4" />;
       case 'rejected':
+      case 'cancelled':
       case 'expired':
         return <XCircle className="h-4 w-4" />;
+      case 'completed':
+        return <CheckCircle className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
     }
@@ -55,6 +65,10 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onRate, kanbanView =
         return 'Aceptada';
       case 'rejected':
         return 'Rechazada';
+      case 'cancelled':
+        return 'Cancelada';
+      case 'completed':
+        return 'Completada';
       case 'expired':
         return 'Caducada';
       default:
@@ -63,7 +77,9 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onRate, kanbanView =
   };
 
   const requestDate = request.requestedDate ? parseLocalDate(request.requestedDate) : null;
-  const canRate = request.status === 'accepted' && (requestDate ? requestDate < new Date() : false);
+  // Solo se puede calificar si el servicio está completado
+  // El backend requiere status = 'completed' para crear una review
+  const canRate = request.status === 'completed';
 
   return (
     <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100">
@@ -74,6 +90,21 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onRate, kanbanView =
           <div className="flex-1 p-6 flex flex-col justify-between">
             <div className="flex-1">
               <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{request.serviceName}</h3>
+              
+              {/* Provider info */}
+              {request.providerName && (
+                <div className="mb-2">
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium">Proveedor:</span> {request.providerName}
+                  </p>
+                  {request.providerLocality && request.providerProvince && (
+                    <p className="text-xs text-gray-500">
+                      {request.providerLocality}, {request.providerProvince}
+                    </p>
+                  )}
+                </div>
+              )}
+              
               <div className="flex items-center text-gray-600 text-sm mb-3">
                 <Calendar className="h-4 w-4 mr-2 text-blue-500" />
                 <span className="font-medium">
@@ -136,6 +167,19 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onRate, kanbanView =
           {/* Información principal */}
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-semibold text-gray-900 truncate">{request.serviceName}</h3>
+            
+            {/* Provider info */}
+            {request.providerName && (
+              <p className="text-sm text-gray-600 mt-1">
+                <span className="font-medium">Proveedor:</span> {request.providerName}
+                {request.providerLocality && request.providerProvince && (
+                  <span className="text-xs text-gray-500 ml-1">
+                    ({request.providerLocality}, {request.providerProvince})
+                  </span>
+                )}
+              </p>
+            )}
+            
             <div className="flex items-center text-gray-600 text-sm mt-1">
               <Calendar className="h-4 w-4 mr-1 text-blue-500" />
               <span>
@@ -169,6 +213,20 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onRate, kanbanView =
                 <span>Calificar</span>
               </button>
             )}
+            
+            {/* Mensaje informativo para servicios aceptados pero no completados */}
+            {request.status === 'accepted' && requestDate && requestDate >= new Date() && (
+              <span className="text-xs text-gray-500 italic">
+                Podrás calificar después del servicio
+              </span>
+            )}
+            
+            {/* Mensaje para servicios aceptados cuya fecha ya pasó pero no están completados */}
+            {request.status === 'accepted' && requestDate && requestDate < new Date() && (
+              <span className="text-xs text-amber-600 italic">
+                ⏳ Esperando que el proveedor marque como completado
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -178,10 +236,15 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onRate, kanbanView =
 
 export default function UserRequestsPage() {
   const navigate = useNavigate();
-  const { userRequests, isAuthenticated, getMyAppointments } = useAuth();
-  const [viewMode, setViewMode] = React.useState<'kanban' | 'list'>('kanban');
-  const [loadingAppointments, setLoadingAppointments] = React.useState(false);
-  const [appointmentsError, setAppointmentsError] = React.useState<string | null>(null);
+  const { userRequests, isAuthenticated, getMyAppointments, submitReview } = useAuth();
+  const { addNotification } = useNotifications();
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
+  const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
+  const [existingReview, setExistingReview] = useState<any | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Redirigir si no está autenticado
   useEffect(() => {
@@ -223,8 +286,85 @@ export default function UserRequestsPage() {
     );
   }
 
-  const handleRate = (requestId: string) => {
-    navigate(`/calificar/${requestId}`);
+  const handleRate = async (requestId: string) => {
+    const request = userRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    setSelectedRequest(request);
+
+    // Verificar si el usuario ya tiene una review para este servicio
+    try {
+      const reviewsResult = await authAPI.getServiceReviews(parseInt(request.serviceId));
+      
+      if (reviewsResult.success && reviewsResult.data?.user_review) {
+        // El usuario ya tiene una review, abrir en modo edición
+        setExistingReview(reviewsResult.data.user_review);
+        setIsEditMode(true);
+        addNotification({
+          type: 'info',
+          message: 'Ya tienes una reseña para este servicio. Puedes editarla.',
+        });
+      } else {
+        // No tiene review, modo creación
+        setExistingReview(null);
+        setIsEditMode(false);
+      }
+      
+      setReviewModalOpen(true);
+    } catch (error) {
+      console.error('Error verificando reviews existentes:', error);
+      // Si hay error, permitir abrir el modal de todas formas
+      setExistingReview(null);
+      setIsEditMode(false);
+      setReviewModalOpen(true);
+    }
+  };
+
+  const handleSubmitReview = async (rating: number, comment: string) => {
+    if (!selectedRequest) return;
+
+    try {
+      let result;
+
+      if (isEditMode && existingReview?.id) {
+        // Modo edición: actualizar review existente
+        result = await authAPI.updateReview(existingReview.id, rating, comment);
+        
+        if (result.success) {
+          addNotification({
+            type: 'success',
+            message: 'Reseña actualizada exitosamente',
+          });
+        }
+      } else {
+        // Modo creación: crear nueva review
+        result = await submitReview(selectedRequest.id, rating, comment);
+        
+        if (result.success) {
+          addNotification({
+            type: 'success',
+            message: 'Reseña enviada exitosamente',
+          });
+        }
+      }
+      
+      if (result.success) {
+        setReviewModalOpen(false);
+        setSelectedRequest(null);
+        setExistingReview(null);
+        setIsEditMode(false);
+        // Recargar solicitudes para actualizar el estado
+        await getMyAppointments();
+      } else {
+        throw new Error(result.error || 'Error al procesar la reseña');
+      }
+    } catch (error: any) {
+      addNotification({
+        type: 'error',
+        message: error.message || 'Error al procesar la reseña',
+      });
+      throw error;
+    }
   };
 
   const sortedRequests = [...userRequests].sort((a, b) => 
@@ -335,6 +475,24 @@ export default function UserRequestsPage() {
           )
         )}
       </div>
+
+      {/* Modal de Reseña */}
+      {selectedRequest && (
+        <ReviewForm
+          isOpen={reviewModalOpen}
+          serviceName={selectedRequest.serviceName}
+          onSubmit={handleSubmitReview}
+          onClose={() => {
+            setReviewModalOpen(false);
+            setSelectedRequest(null);
+            setExistingReview(null);
+            setIsEditMode(false);
+          }}
+          initialRating={existingReview?.rating}
+          initialComment={existingReview?.comment}
+          isEditing={isEditMode}
+        />
+      )}
     </div>
   );
 }

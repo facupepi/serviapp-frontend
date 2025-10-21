@@ -4,17 +4,24 @@ import {
   Star, 
   MapPin, 
   Heart,
-  ArrowLeft
+  ArrowLeft,
+  User
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import logger from '../utils/logger';
-import { Service } from '../types/api';
+import { Service, Review, ReviewsData } from '../types/api';
 import Calendar from '../components/Calendar';
+import StarRating from '../components/StarRating';
+import ServiceLeaderBadge from '../components/ServiceLeaderBadge';
+import ReviewForm from '../components/ReviewForm';
+import { authAPI } from '../api/auth';
 // Image is required on services; use service-provided URL directly
 
 const ServiceDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addNotification } = useNotifications();
   const { 
     isAuthenticated, 
     getServiceById,
@@ -42,6 +49,10 @@ const ServiceDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [isUserService, setIsUserService] = useState(false);
+  const [reviewsData, setReviewsData] = useState<ReviewsData | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [showEditReviewModal, setShowEditReviewModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     const loadService = async () => {
@@ -90,6 +101,43 @@ const ServiceDetail = () => {
 
     loadService();
   }, [id, isAuthenticated, user?.id]); // Simplificar dependencias para evitar re-renders innecesarios
+
+  // Cargar reviews del servicio
+  useEffect(() => {
+    const loadReviews = async () => {
+      if (!id) return;
+      
+      console.log('🔍 [ServiceDetail] Cargando reviews para servicio ID:', id);
+      setReviewsLoading(true);
+      try {
+        const result = await authAPI.getServiceReviews(parseInt(id));
+        console.log('🔍 [ServiceDetail] Resultado de getServiceReviews:', result);
+        console.log('🔍 [ServiceDetail] result.success:', result.success);
+        console.log('🔍 [ServiceDetail] result.data:', result.data);
+        
+        if (result.success && result.data) {
+          setReviewsData(result.data);
+          console.log('🔍 [ServiceDetail] Reviews guardadas en estado:', result.data);
+          logger.info('Reviews cargadas:', result.data);
+        } else {
+          console.log('🔍 [ServiceDetail] No se cargaron reviews. Error:', result.error);
+        }
+      } catch (error) {
+        logger.error('Error cargando reviews:', error);
+        console.error('🔍 [ServiceDetail] Exception al cargar reviews:', error);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+
+    loadReviews();
+  }, [id]);
+
+  // Debug: Monitorear cambios en reviewsData
+  useEffect(() => {
+    console.log('🔍 [ServiceDetail] reviewsData cambió:', reviewsData);
+    console.log('🔍 [ServiceDetail] reviewsLoading:', reviewsLoading);
+  }, [reviewsData, reviewsLoading]);
 
   // Cuando cambia la fecha seleccionada, pedir disponibilidad por fecha
   useEffect(() => {
@@ -197,17 +245,6 @@ const ServiceDetail = () => {
   }
 
   const isFavorite = serviceData ? favorites.includes(serviceData.id.toString()) : false;
-
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        className={`h-5 w-5 ${
-          i < Math.floor(rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
-        }`}
-      />
-    ));
-  };
 
   const handleRequestService = async () => {
     if (!serviceData) {
@@ -359,7 +396,51 @@ const ServiceDetail = () => {
 
 
 
-  
+  // Función para editar review
+  const handleEditReview = async (rating: number, comment: string) => {
+    if (!reviewsData?.user_review?.id) return;
+    
+    try {
+      const result = await authAPI.updateReview(reviewsData.user_review.id, rating, comment);
+      if (result.success) {
+        addNotification({ type: 'success', message: 'Reseña actualizada exitosamente' });
+        // Recargar reviews
+        const reviewsResult = await authAPI.getServiceReviews(parseInt(id!));
+        if (reviewsResult.success && reviewsResult.data) {
+          setReviewsData(reviewsResult.data);
+        }
+        setShowEditReviewModal(false);
+      } else {
+        addNotification({ type: 'error', message: result.error || 'Error al actualizar la reseña' });
+      }
+    } catch (error) {
+      logger.error('Error updating review:', error);
+      addNotification({ type: 'error', message: 'Error inesperado al actualizar la reseña' });
+    }
+  };
+
+  // Función para eliminar review
+  const handleDeleteReview = async () => {
+    if (!reviewsData?.user_review?.id) return;
+    
+    try {
+      const result = await authAPI.deleteReview(reviewsData.user_review.id);
+      if (result.success) {
+        addNotification({ type: 'success', message: 'Reseña eliminada exitosamente' });
+        // Recargar reviews
+        const reviewsResult = await authAPI.getServiceReviews(parseInt(id!));
+        if (reviewsResult.success && reviewsResult.data) {
+          setReviewsData(reviewsResult.data);
+        }
+        setShowDeleteConfirm(false);
+      } else {
+        addNotification({ type: 'error', message: result.error || 'Error al eliminar la reseña' });
+      }
+    } catch (error) {
+      logger.error('Error deleting review:', error);
+      addNotification({ type: 'error', message: 'Error inesperado al eliminar la reseña' });
+    }
+  };
 
   const isDateAvailable = (date: string) => {
     if (!serviceData?.availability || !date) return false;
@@ -431,6 +512,30 @@ const ServiceDetail = () => {
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">
                     {serviceData.title}
                   </h1>
+                  
+                  {/* Services Líder Badge */}
+                  <div className="mb-3">
+                    <ServiceLeaderBadge 
+                      averageRating={serviceData.average_rating}
+                      ratingsCount={serviceData.ratings_count}
+                      showLabel={true}
+                      size="md"
+                    />
+                  </div>
+                  
+                  {/* Rating */}
+                  {serviceData.average_rating !== undefined && serviceData.average_rating > 0 && (
+                    <div className="mb-3">
+                      <StarRating
+                        rating={serviceData.average_rating}
+                        readonly
+                        size="md"
+                        showCount
+                        count={serviceData.ratings_count || 0}
+                      />
+                    </div>
+                  )}
+                  
                   {/* Ubicaciones en filas separadas con icono */}
                   <div className="space-y-2">
                     {serviceData.zones && serviceData.zones.length > 0 ? (
@@ -549,6 +654,39 @@ const ServiceDetail = () => {
                     <p className="text-gray-700 leading-relaxed">
                       {serviceData.description}
                     </p>
+
+                    {/* Información del Proveedor */}
+                    {serviceData.provider && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                          <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                          Información del Proveedor
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center">
+                            <span className="text-gray-600 w-24">Nombre:</span>
+                            <span className="font-medium text-gray-900">{serviceData.provider.name}</span>
+                          </div>
+                          {serviceData.provider.phone && (
+                            <div className="flex items-center">
+                              <span className="text-gray-600 w-24">Teléfono:</span>
+                              <span className="font-medium text-gray-900">{serviceData.provider.phone}</span>
+                            </div>
+                          )}
+                          {serviceData.provider.locality && serviceData.provider.province && (
+                            <div className="flex items-center">
+                              <span className="text-gray-600 w-24">Ubicación:</span>
+                              <span className="font-medium text-gray-900">
+                                {serviceData.provider.locality}, {serviceData.provider.province}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid md:grid-cols-1 gap-6">
                       <div>
                         <h4 className="font-medium text-gray-900 mb-3">Detalles del servicio</h4>
@@ -601,37 +739,147 @@ const ServiceDetail = () => {
 
                 {activeTab === 'reviews' && (
                   <div className="space-y-6">
+                    {/* Encabezado con promedio de valoraciones */}
                     <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-gray-900">Reseñas de clientes</h4>
-                      <div className="flex items-center space-x-2">
-                        <div className="flex items-center">
-                          {renderStars(4.8)}
+                      <h4 className="font-medium text-gray-900 text-lg">
+                        Valoraciones del servicio
+                      </h4>
+                      {reviewsData && reviewsData.total_reviews > 0 && (
+                        <div className="flex items-center space-x-2">
+                          <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                          <span className="text-lg font-semibold">
+                            {reviewsData.average_rating.toFixed(1)}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            – {reviewsData.total_reviews} {reviewsData.total_reviews === 1 ? 'calificación' : 'calificaciones'}
+                          </span>
                         </div>
-                        <span className="text-sm font-medium">4.8/5</span>
-                        <span className="text-sm text-gray-500">(24 reseñas)</span>
-                      </div>
+                      )}
                     </div>
-                    <div className="space-y-4">
-                      {[1, 2, 3].map((review) => (
-                        <div key={review} className="border-b border-gray-100 pb-4">
-                          <div className="flex items-start space-x-4">
-                            <div className="h-10 w-10 bg-gray-300 rounded-full"></div>
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-1">
-                                <span className="font-medium">Cliente Satisfecho</span>
-                                <div className="flex items-center">
-                                  {renderStars(5)}
-                                </div>
-                              </div>
-                              <p className="text-sm text-gray-600 mb-2">
-                                Excelente servicio, muy profesional y puntual. Lo recomiendo totalmente.
-                              </p>
-                              <span className="text-xs text-gray-400">Hace 1 semana</span>
+
+                    {/* Review del usuario (si existe) */}
+                    {!reviewsLoading && reviewsData?.user_review && isAuthenticated && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900 mb-2 flex items-center">
+                              <Star className="h-4 w-4 text-blue-600 mr-1 fill-blue-600" />
+                              Tu reseña
+                            </h3>
+                            <div className="mb-2">
+                              <StarRating rating={reviewsData.user_review.rating} size="sm" />
                             </div>
+                            <p className="text-sm text-gray-700 mb-2">
+                              {reviewsData.user_review.comment}
+                            </p>
+                            <span className="text-xs text-gray-500">
+                              Publicada el {new Date(reviewsData.user_review.created_at).toLocaleDateString('es-AR', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </span>
+                          </div>
+                          <div className="flex space-x-2 ml-4">
+                            <button
+                              onClick={() => setShowEditReviewModal(true)}
+                              className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => setShowDeleteConfirm(true)}
+                              className="text-red-600 hover:text-red-800 text-sm font-medium transition-colors"
+                            >
+                              Eliminar
+                            </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
+
+                    {/* Mensaje para usuarios autenticados sin review */}
+                    {!reviewsLoading && !reviewsData?.user_review && isAuthenticated && !isUserService && (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+                        <p className="text-sm text-gray-600 text-center">
+                          📝 Contrata este servicio para poder dejar tu reseña
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Loading state */}
+                    {reviewsLoading && (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                        <p className="text-gray-600 mt-2">Cargando valoraciones...</p>
+                      </div>
+                    )}
+
+                    {/* Empty state */}
+                    {!reviewsLoading && (!reviewsData || reviewsData.total_reviews === 0) && (
+                      <div className="text-center py-12 bg-gray-50 rounded-lg">
+                        <Star className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-600">Este servicio aún no tiene reseñas.</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Sé el primero en calificarlo después de contratarlo.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Listado de reseñas (últimas 3, excluyendo la del usuario si está destacada arriba) */}
+                    {!reviewsLoading && reviewsData && reviewsData.reviews && reviewsData.reviews.length > 0 && (
+                      <div className="space-y-4">
+                        <h3 className="font-semibold text-gray-900 mb-4">
+                          Reseñas de otros usuarios
+                        </h3>
+                        {reviewsData.reviews
+                          .filter(review => review.id !== reviewsData.user_review?.id) // Excluir review del usuario
+                          .slice(0, 3)
+                          .map((review: Review) => (
+                          <div key={review.id} className="border-b border-gray-100 pb-4 last:border-0">
+                            <div className="flex items-start space-x-4">
+                              {/* Avatar */}
+                              <div className="h-10 w-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
+                                {review.user_avatar ? (
+                                  <img 
+                                    src={review.user_avatar} 
+                                    alt={review.user_name}
+                                    className="h-10 w-10 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <User className="h-5 w-5" />
+                                )}
+                              </div>
+                              
+                              {/* Contenido de la reseña */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center space-x-2 mb-1 flex-wrap">
+                                  <span className="font-medium text-gray-900">{review.user_name}</span>
+                                  <StarRating rating={review.rating} size="sm" />
+                                </div>
+                                <p className="text-sm text-gray-700 mb-2 break-words">
+                                  {review.comment}
+                                </p>
+                                <span className="text-xs text-gray-400">
+                                  {new Date(review.created_at).toLocaleDateString('es-AR', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* Mostrar mensaje si hay más reviews */}
+                        {reviewsData.reviews.length > 3 && (
+                          <p className="text-sm text-gray-500 text-center pt-2">
+                            Mostrando las 3 reseñas más recientes de {reviewsData.total_reviews} en total
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -822,6 +1070,45 @@ const ServiceDetail = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de edición de reseña */}
+      {showEditReviewModal && reviewsData?.user_review && serviceData && (
+        <ReviewForm
+          serviceName={serviceData.title}
+          onSubmit={handleEditReview}
+          onClose={() => setShowEditReviewModal(false)}
+          isOpen={showEditReviewModal}
+          initialRating={reviewsData.user_review.rating}
+          initialComment={reviewsData.user_review.comment}
+          isEditing={true}
+        />
+      )}
+
+      {/* Modal de confirmación de eliminación */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Eliminar reseña</h3>
+            <p className="text-gray-600 mb-6">
+              ¿Estás seguro de que deseas eliminar tu reseña? Esta acción no se puede deshacer.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteReview}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Eliminar
+              </button>
+            </div>
           </div>
         </div>
       )}
